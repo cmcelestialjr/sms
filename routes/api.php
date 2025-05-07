@@ -5,9 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StationController;
-
-// use App\Http\Controllers\Api\StudentController;
-// use App\Http\Controllers\Api\StationController;
+use App\Http\Controllers\UsersController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -28,3 +26,10 @@ Route::get('/stations', [StationController::class, 'index']);
 Route::get('/stations/{id}', [StationController::class, 'show']);
 // Route::put('/stations/{id}', [StationController::class, 'update']);
 // Route::delete('/stations/{id}', [StationController::class, 'destroy']);
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/users', [UsersController::class, 'index']);
+    Route::get('/users/roles', [UsersController::class, 'roles']);
+    Route::post('/users/store', [UsersController::class, 'store']);
+    Route::put('/users/{id}', [UsersController::class, 'update']);  
+});

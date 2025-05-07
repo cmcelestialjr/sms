@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 import 'toastr/build/toastr.min.css';
 import "react-datepicker/dist/react-datepicker.css";
 
-const Dashboard = () => {
+const Stations = () => {
     const [meta, setMeta] = useState(null);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -35,10 +35,9 @@ const Dashboard = () => {
             <div className="border border-gray-300 shadow-xl rounded-lg p-6 bg-white mx-auto w-full mt-10">
                 {/* Header Section */}
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>                   
+                    <h1 className="text-2xl font-semibold text-gray-800">Stations</h1>                   
                 </div>
                 
-               
             </div>
 
         </Layout>
@@ -46,4 +45,4 @@ const Dashboard = () => {
 
 };
 
-export default Dashboard;
+export default Stations;

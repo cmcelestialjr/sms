@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 import 'toastr/build/toastr.min.css';
 import "react-datepicker/dist/react-datepicker.css";
 
-const Dashboard = () => {
+const Attendances = () => {
     const [meta, setMeta] = useState(null);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -46,4 +46,4 @@ const Dashboard = () => {
 
 };
 
-export default Dashboard;
+export default Attendances;

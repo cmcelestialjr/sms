@@ -73,7 +73,7 @@ class AttendanceController extends Controller
         // Check for duplicate scan within 30 seconds
         $recentScan = Attendance::where('student_id', $student->id)
             ->where('station_id', $station->id)
-            ->where('scanned_at', '>=', Carbon::now()->subSeconds(60))
+            ->where('scanned_at', '>=', Carbon::now()->subMinutes(30))
             ->first();
 
         if ($recentScan) {

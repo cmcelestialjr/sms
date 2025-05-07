@@ -1,19 +1,15 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, 
-        LayoutDashboard, 
-        ShoppingCart,
-        Wrench,
-        ClipboardList,
-        Undo,
-        Boxes,
-        Users, 
-        Truck,
-        Banknote,
-        Package,
-        Settings,
-        ZapOff,
-        LogOut } 
+    LayoutDashboard,
+    CalendarCheck,
+    GraduationCap,
+    Users,
+    MapPin,
+    Wallet,
+    MessageSquare,
+    UserCog,
+    LogOut, } 
         from "lucide-react";
 
 const Sidebar = () => {
@@ -47,7 +43,7 @@ const Sidebar = () => {
             <ul className="space-y-4 px-5">
               <li>
                 <Link 
-                  to="/dashboard" 
+                  to="/dashboard"
                   className={`flex items-center p-2 rounded transition ${
                     isActive("/dashboard") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
                   }`}
@@ -58,35 +54,46 @@ const Sidebar = () => {
               </li>
               <li>
                 <Link 
-                  to="/sales" 
+                  to="/attendances" 
                   className={`flex items-center p-2 rounded transition ${
-                    isActive("/sales") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    isActive("/attendances") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
                   }`}
                 >
-                  <ShoppingCart size={20} className="mr-2" />
-                  Sales
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/serviceTransactions"
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/serviceTransactions") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <ClipboardList size={20} className="mr-2" />
-                  Service Transactions
+                  <CalendarCheck size={20} className="mr-2" />
+                  Attendances
                 </Link>
               </li>
               <li>
                 <Link 
-                  to="/returns"
+                  to="/students"
                   className={`flex items-center p-2 rounded transition ${
-                    isActive("/returns") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    isActive("/students") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
                   }`}
                 >
-                  <Undo size={20} className="mr-2" />
-                  Returns
+                  <GraduationCap size={20} className="mr-2" />
+                  Students
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/employees"
+                  className={`flex items-center p-2 rounded transition ${
+                    isActive("/employees") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                  }`}
+                >
+                  <UserCog size={20} className="mr-2" />
+                  Employees
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/stations"
+                  className={`flex items-center p-2 rounded transition ${
+                    isActive("/stations") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                  }`}
+                >
+                  <MapPin size={20} className="mr-2" />
+                  Stations
                 </Link>
               </li>
               <li>
@@ -96,63 +103,19 @@ const Sidebar = () => {
                     isActive("/expenses") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
                   }`}
                 >
-                  <Banknote size={20} className="mr-2" />
+                  <Wallet size={20} className="mr-2" />
                   Expenses
                 </Link>
               </li>
               <li>
                 <Link 
-                  to="/purchase-orders" 
+                  to="/messages" 
                   className={`flex items-center p-2 rounded transition ${
-                    isActive("/purchase-orders") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    isActive("/messages") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
                   }`}
                 >
-                  <Package size={20} className="mr-2" />
-                  Purchase Orders
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/products" 
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/products") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <Boxes size={20} className="mr-2" />
-                  Products
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/damaged" 
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/damaged") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <ZapOff size={20} className="mr-2" />
-                  Damaged
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/services"
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/services") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <Wrench size={20} className="mr-2" />
-                  Services
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/suppliers" 
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/suppliers") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <Truck size={20} className="mr-2" />
-                  Suppliers
+                  <MessageSquare size={20} className="mr-2" />
+                  Messages
                 </Link>
               </li>
               <li>
