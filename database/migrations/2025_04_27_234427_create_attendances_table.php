@@ -13,7 +13,18 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
             $table->foreignId('station_id')->constrained('stations')->onDelete('cascade');
             $table->timestamp('scanned_at')->useCurrent();
+            $table->enum('type', ['In', 'Out'])->index();
             $table->enum('method', ['qr', 'rfid']);
+            $table->enum('status', ['success', 'error'])->index();
+            $table->string('message');
+            $table->unsignedBigInteger('school_year_id')->nullable()->index();
+            $table->year('sy_from')->index();
+            $table->year('sy_to')->index();
+            $table->enum('level', ['Kinder', 'Elementary', 'Junior High School', 'Senior High School'])->index();
+            $table->string('grade')->index();
+            $table->string('section')->index();
+            $table->unsignedBigInteger('teachers_id')->nullable();
+            $table->enum('message_status', ['Success', 'Error'])->index();
             $table->timestamps();
         });
     }

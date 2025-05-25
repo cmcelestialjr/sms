@@ -72,6 +72,12 @@ return [
             'after_commit' => false,
         ],
 
+        'sms' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'sms',
+            'retry_after' => 90,
+        ],
     ],
 
     /*

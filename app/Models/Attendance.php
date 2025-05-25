@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Attendance extends Model
 {
@@ -16,16 +17,28 @@ class Attendance extends Model
         'type',
         'method',
         'status',
-        'message'
+        'message',
+        'sy_from',
+        'sy_to',
+        'level',
+        'grade',
+        'section',
+        'teachers_id',
+        'message_status'
     ];
 
-    public function student()
+    public function student(): BelongsTo
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class, 'student_id', 'id');
     }
 
-    public function station()
+    public function station(): BelongsTo
     {
-        return $this->belongsTo(Station::class);
+        return $this->belongsTo(Station::class, 'station_id', 'id');
+    }
+
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(Teacher::class, 'teachers_id', 'id');
     }
 }

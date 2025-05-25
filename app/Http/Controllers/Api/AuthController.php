@@ -15,20 +15,27 @@ class AuthController extends Controller
     {
         $credentials = $request->only('username', 'password');
 
-        // $insert = new User();
-        // $insert->name = "Admin";
-        // $insert->username = "admin";
-        // $insert->password = Hash::make("adm1n@SMS");
-        // $insert->role_id = 1;
-        // $insert->save();
-        
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
             $token = $user->createToken('authToken')->plainTextToken;
 
+            $extname = '';
+            if($user->extname){
+                $extname = ' '.$user->extname;
+            }
+
+            $middlename = '';
+            if ($user->middlename) {
+                $middlename = ' ' . strtoupper($user->middlename[0]) . '.';
+            }
+
+            $photo = $user->photo ? asset("storage/$user->photo") : asset('images/no-image-icon.png');
+
             return response()->json([
                 'message' => 'success',
                 'userRole' => $user->role_id, 
+                'userName' => $user->lastname.', '.$user->firstname.$extname.$middlename,
+                'userPhoto' => $photo,
                 'token' => $token
             ]);
         }

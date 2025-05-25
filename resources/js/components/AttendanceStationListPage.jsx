@@ -27,11 +27,11 @@ const AttendanceStationListPage = () => {
     <div className="min-h-screen bg-gray-100 p-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Select Attendance Station</h1>
 
-      {stations.length === 0 ? (
+      {stations?.length === 0 ? (
         <p className="text-center text-gray-500">No attendance stations available.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stations.map((station) => (
+          {stations?.map((station) => (
             <div
               key={station.id}
               className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl cursor-pointer transition"

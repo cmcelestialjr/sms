@@ -10,6 +10,9 @@ import Logout from './components/Logout';
 import Attendances from './components/Attendances';
 import Students from './components/Students';
 import Stations from './components/Stations';
+import Teachers from './components/Teachers';
+import Messages from './components/Messages';
+import SchoolYears from './components/SchoolYears';
 
 function RouterApp() {  
   return (
@@ -29,29 +32,50 @@ function RouterApp() {
 
         <Route path="/dashboard" 
           element={
-          <ProtectedRoute allowedRoles={["1"]}>
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
             <Dashboard />
           </ProtectedRoute>}
         />
 
         <Route path="/attendances" 
           element={
-          <ProtectedRoute allowedRoles={["1"]}>
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
             <Attendances />
           </ProtectedRoute>}
         />
 
         <Route path="/students" 
           element={
-          <ProtectedRoute allowedRoles={["1"]}>
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
             <Students />
+          </ProtectedRoute>}
+        />
+
+        <Route path="/teachers" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2"]}>
+            <Teachers />
           </ProtectedRoute>}
         />
 
         <Route path="/stations" 
           element={
-          <ProtectedRoute allowedRoles={["1"]}>
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
             <Stations />
+          </ProtectedRoute>}
+        />
+
+        <Route path="/messages" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
+            <Messages />
+          </ProtectedRoute>}
+        />
+
+        <Route path="/schoolYears" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2"]}>
+            <SchoolYears />
           </ProtectedRoute>}
         />
 
@@ -64,7 +88,7 @@ function RouterApp() {
 
         <Route path="/logout" 
           element={
-            <ProtectedRoute allowedRoles={["1"]}>
+            <ProtectedRoute allowedRoles={["1","2","3"]}>
               <Logout />
             </ProtectedRoute>} 
         />

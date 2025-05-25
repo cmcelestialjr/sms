@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Layout from "./Layout";
+import UserModal from './UserModal';
 import { Edit, Plus, X, Upload } from "lucide-react";
 import Swal from "sweetalert2";
 import toastr from 'toastr';
 import 'toastr/build/toastr.min.css';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 
 const UsersList = () => {  
     const [users, setUsers] = useState([]);
@@ -14,14 +13,28 @@ const UsersList = () => {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [userModal, setUserModal] = useState(false);
-    const [nameOfUser, setNameOfUser] = useState("");
+    const [lastnameOfUser, setLastnameOfUser] = useState("");
+    const [firstnameOfUser, setFirstnameOfUser] = useState("");
+    const [extnameOfUser, setExtnameOfUser] = useState(null);
+    const [middlenameOfUser, setMiddlenameOfUser] = useState(null);
     const [userNameOfUser, setUserNameOfUser] = useState("");
     const [passwordOfUser, setPasswordOfUser] = useState("");
     const [roleOfUser, setRoleOfUser] = useState(2);
+    const [levelOfUser, setLevelOfUser] = useState("Elementary");
+    const [gradeOfUser, setGradeOfUser] = useState(null);
+    const [sectionOfUser, setSectionOfUser] = useState(null);
+    const [newPhoto, setNewPhoto] = useState(null);
+    const [photo, setPhoto] = useState(null);
+    const [email, setEmail] = useState(null);
+    const [contactNo, setContactNo] = useState(null);
+    const [address, setAddress] = useState(null);
     const [idOfUser, setIdOfUser] = useState(null);
     const [roles, setRoles] = useState([]);
     const [file, setFile] = useState(null);
-
+    const [isEditingPassword, setIsEditingPassword] = useState(false);
+    const [status, setStatus] = useState("Active");
+    const [position, setPosition] = useState(null);
+    const [sex, setSex] = useState("Male");
     useEffect(() => {
         fetchUsers();
     }, [search, page]);
@@ -87,11 +100,23 @@ const UsersList = () => {
     };
     
     const handleEditUser = (user) => {
-        setNameOfUser(user.name);
+        setLastnameOfUser(user.lastname);
+        setFirstnameOfUser(user.firstname);
+        setExtnameOfUser(user.extname);
+        setMiddlenameOfUser(user.middlename);
         setUserNameOfUser(user.username);
         setPasswordOfUser("************");
-        setRoleOfUser(user.user_role_id);
+        setRoleOfUser(user.role_id);
         setIdOfUser(user.id);
+        setLevelOfUser(user.teacher?.level);
+        setGradeOfUser(user.teacher?.grade);
+        setSectionOfUser(user.teacher?.section);
+        setStatus(user.teacher?.status || 'Active');
+        setEmail(user.teacher?.email);
+        setContactNo(user.teacher?.contact_no);
+        setAddress(user.teacher?.address);
+        setPosition(user.teacher?.position);
+        setSex(user.teacher?.sex || 'Male');
         setUserModal(true);
     };
 
@@ -107,8 +132,12 @@ const UsersList = () => {
 
     const validateForm = () => {
         let isValid = false;
-        if(nameOfUser==""){
-            toastr.success("Name is required!"); 
+        if(lastnameOfUser==""){
+            toastr.success("Lastname is required!"); 
+            isValid = false;
+        }
+        if(firstnameOfUser==""){
+            toastr.success("Firstname is required!"); 
             isValid = false;
         }
         if(userNameOfUser==""){
@@ -119,29 +148,70 @@ const UsersList = () => {
             toastr.success("Password is required!"); 
             isValid = false;
         }
+        if(roleOfUser==3){
+            if(levelOfUser==""){
+                toastr.success("Level is required!"); 
+                isValid = false;
+            }
+            if(gradeOfUser==""){
+                toastr.success("Grade is required!"); 
+                isValid = false;
+            }
+            if(sectionOfUser==""){
+                toastr.success("Section is required!"); 
+                isValid = false;
+            }
+        }
         return isValid;
     }
 
     const handleNewUserSubmit = async () => {
         try {
-            const formData = {
-                name: nameOfUser,
-                username: userNameOfUser,
-                password: passwordOfUser,
-                role: roleOfUser
-            };
+            const formData = new FormData();
+
+            formData.append('lastname', lastnameOfUser);
+            formData.append('firstname', firstnameOfUser);
+            formData.append('extname', extnameOfUser);
+            formData.append('middlename', middlenameOfUser);
+            formData.append('username', userNameOfUser);
+            formData.append('password', passwordOfUser);
+            formData.append('role', roleOfUser);
+            formData.append('level', levelOfUser);
+            formData.append('grade', gradeOfUser);
+            formData.append('section', sectionOfUser);
+            formData.append('status', status);
+            formData.append('contact_no', contactNo);
+            formData.append('email', email);
+            formData.append('address', address);
+            formData.append('photo', photo);
+            formData.append('newPhoto', newPhoto);
+            formData.append('position', position);
+            formData.append('sex', sex);
+
             const authToken = localStorage.getItem("token");
             const response = await axios.post("/api/users/store", formData, {
-                headers: { Authorization: `Bearer ${authToken}` },
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${authToken}`,                    
+                }
             });
 
             if (response.status === 200 || response.status === 201) {
                 toastr.success("User added successfully!"); 
-                setNameOfUser("");
+                setLastnameOfUser("");
+                setFirstnameOfUser("");
+                setExtnameOfUser(null);
+                setMiddlenameOfUser(null);
                 setUserNameOfUser("");
                 setPasswordOfUser("");
                 setRoleOfUser(2);
-                setIdOfUser(null);                
+                setIdOfUser(null);     
+                setStatus("Active");
+                setEmail(null);
+                setContactNo(null);
+                setAddress(null);      
+                setPosition(null);     
+                setSex("Male");
                 fetchUsers();
                 setUserModal(false);
             } else {
@@ -155,39 +225,79 @@ const UsersList = () => {
 
     const handleUpdateUserSubmit = async () => {
         try {
-            const formData = {
-                name: nameOfUser,
-                username: userNameOfUser,
-                password: passwordOfUser,
-                role: roleOfUser
-            };
+            const formData = new FormData();
+
+            formData.append('lastname', lastnameOfUser);
+            formData.append('firstname', firstnameOfUser);
+            formData.append('extname', extnameOfUser);
+            formData.append('middlename', middlenameOfUser);
+            formData.append('username', userNameOfUser);
+            formData.append('password', passwordOfUser);
+            formData.append('role', roleOfUser);
+            formData.append('level', levelOfUser);
+            formData.append('grade', gradeOfUser);
+            formData.append('section', sectionOfUser);
+            formData.append('status', status);
+            formData.append('contact_no', contactNo);
+            formData.append('email', email);
+            formData.append('address', address);
+            formData.append('photo', photo);
+            formData.append('newPhoto', newPhoto);
+            formData.append('position', position);
+            formData.append('sex', sex);
+
             const authToken = localStorage.getItem("token");
-            const response = await axios.put(`/api/users/${idOfUser}`, formData, {
-                headers: { Authorization: `Bearer ${authToken}` },
+            const response = await axios.post(`/api/users/update/${idOfUser}`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${authToken}`,
+                }
             });
 
             if (response.status === 200 || response.status === 201) {
                 toastr.success("User updated successfully!"); 
-                setNameOfUser("");
+                setLastnameOfUser("");
+                setFirstnameOfUser("");
+                setExtnameOfUser(null);
+                setMiddlenameOfUser(null);
                 setUserNameOfUser("");
                 setPasswordOfUser("");
                 setRoleOfUser(2);
                 setIdOfUser(null);
+                setStatus("Active");
+                setEmail(null);
+                setContactNo(null);
+                setAddress(null);     
+                setPosition(null);
+                setSex("Male");
                 fetchUsers();
                 setUserModal(false);
             } else {
                 toastr.error("Unexpected response");
             }
         } catch (error) {
-            // console.error("Request failed:", error.response?.data?.message || error.message);
-            toastr.error("Failed to update user.");
+            const errorMessage =
+            error.response?.data?.message ||
+            error.response?.data?.errors
+                ? Object.values(error.response.data.errors).flat().join(', ')
+                : 'An unexpected error occurred.';
+            toastr.error(errorMessage, "Failed to update student.");
         }
     };
 
     const handleUserModalClose  = async () => {
-        setNameOfUser("");
+        setLastnameOfUser("");
+        setFirstnameOfUser("");
+        setExtnameOfUser(null);
+        setMiddlenameOfUser(null);
         setUserNameOfUser("");
         setPasswordOfUser("");
+        setStatus("Active");
+        setEmail(null);
+        setContactNo(null);
+        setAddress(null);     
+        setPosition(null);
+        setSex("Male");
         setRoleOfUser(2);
         setIdOfUser(null);
         setUserModal(false);
@@ -238,7 +348,7 @@ const UsersList = () => {
                                         <td className="border border-gray-300 px-4 py-2 gap-2">
                                             <button 
                                                 onClick={(e) => handleEditUser(user)}
-                                                className="flex items-center gap-1 text-blue-600 hover:underline">
+                                                className="flex items-center gap-1 text-blue-600 hover:underline cursor-pointer">
                                                 <Edit size={16} /> Edit
                                             </button>
                                         </td>
@@ -246,7 +356,7 @@ const UsersList = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="10" className="border border-gray-300 px-4 py-2 text-center">
+                                    <td colSpan="10" className="border border-gray-300 px-4 py-2 text-center cursor-pointer">
                                         No Users found.
                                     </td>
                                 </tr>
@@ -279,74 +389,53 @@ const UsersList = () => {
                 )}
             </div>
             
-            {userModal && (
-                <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
-                        <div className="flex justify-between">
-                            <h2 className="text-xl font-semibold">User</h2>
-                            <button 
-                                onClick={handleUserModalClose} 
-                                className="text-gray-500 hover:text-gray-700 transition"
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="mt-2">
-                            <label className="block text-sm font-medium text-gray-700">Name:</label>
-                            <input 
-                                type="text"
-                                value={nameOfUser}
-                                onChange={(e) => setNameOfUser(e.target.value)}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-                            <label className="block text-sm font-medium text-gray-700">Username:</label>
-                            <input 
-                                type="text"
-                                value={userNameOfUser}
-                                onChange={(e) => setUserNameOfUser(e.target.value)}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-                            <label className="block text-sm font-medium text-gray-700">Password:</label>
-                            <input 
-                                type="password"
-                                value={passwordOfUser}
-                                onChange={(e) => setPasswordOfUser(e.target.value)}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-                            <label className="block text-sm font-medium text-gray-700">Role:</label>
-                            <select
-                                value={roleOfUser}
-                                onChange={(e) => {setRoleOfUser(e.target.value)}}
-                                className="w-full border px-3 py-2 rounded-lg flex-1"
-                            >
-                                {roles.map((role) => (
-                                    <option key={role.id} 
-                                        value={role.id}>
-                                        {role.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="flex justify-between mt-2">
-                                <button 
-                                    onClick={handleUserModalClose}
-                                    className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg shadow mt-2 hover:bg-gray-700 transition">
-                                    <X size={18} /> Close
-                                </button>
-                                <button
-                                    onClick={handleUserSubmit}
-                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow mt-2 hover:bg-blue-700 transition"
-                                >
-                                    <Plus size={18} /> Submit
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* User Modal Component */}
+            <UserModal
+                userModal={userModal}
+                handleUserModalClose={handleUserModalClose}
+                handleUserSubmit={handleUserSubmit}
+                setLastnameOfUser={setLastnameOfUser}
+                setFirstnameOfUser={setFirstnameOfUser}
+                setExtnameOfUser={setExtnameOfUser}
+                setMiddlenameOfUser={setMiddlenameOfUser}
+                setUserNameOfUser={setUserNameOfUser}
+                setPasswordOfUser={setPasswordOfUser}
+                setRoleOfUser={setRoleOfUser}
+                setLevelOfUser={setLevelOfUser}
+                setGradeOfUser={setGradeOfUser}
+                setSectionOfUser={setSectionOfUser}
+                setStatus={setStatus}
+                setNewPhoto={setNewPhoto}
+                setPhoto={setPhoto}
+                setEmail={setEmail}
+                setContactNo={setContactNo}
+                setAddress={setAddress}
+                setPosition={setPosition}
+                setSex={setSex}
+                roles={roles}
+                isEditingPassword={isEditingPassword}
+                setIsEditingPassword={setIsEditingPassword}
+                lastnameOfUser={lastnameOfUser}
+                firstnameOfUser={firstnameOfUser}
+                middlenameOfUser={middlenameOfUser}
+                extnameOfUser={extnameOfUser}
+                userNameOfUser={userNameOfUser}
+                passwordOfUser={passwordOfUser}
+                levelOfUser={levelOfUser}
+                gradeOfUser={gradeOfUser}
+                sectionOfUser={sectionOfUser}
+                roleOfUser={roleOfUser}
+                status={status}
+                newPhoto={newPhoto}
+                photo={photo}
+                email={email}
+                contactNo={contactNo}
+                address={address}
+                position={position}
+                sex={sex}
+            />
         </Layout>
     );
-
 };
 
 export default UsersList;

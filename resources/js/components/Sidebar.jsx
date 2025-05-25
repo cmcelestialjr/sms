@@ -8,13 +8,18 @@ import { Menu,
     MapPin,
     Wallet,
     MessageSquare,
+    Calendar,
     UserCog,
-    LogOut, } 
+    LogOut,
+    User, } 
         from "lucide-react";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation(); // Get current path
+  const userRole = localStorage.getItem("userRole");
+  const userName = localStorage.getItem("userName");
+  const userPhoto = localStorage.getItem("userPhoto");
 
   // Function to check if a link is active
   const isActive = (path) => location.pathname === path;
@@ -41,6 +46,22 @@ const Sidebar = () => {
           </div>
           <nav>
             <ul className="space-y-4 px-5">
+              <li>
+                <Link
+                  className="flex items-center"
+                >
+                  <div className="flex justify-center mr-2">
+                    <div className="w-14 h-14 rounded-full overflow-hidden border border-gray-300 shadow-sm">
+                      <img
+                          src={userPhoto}
+                          alt={userName}
+                          className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                  {userName}
+                </Link>
+              </li>
               <li>
                 <Link 
                   to="/dashboard"
@@ -74,61 +95,79 @@ const Sidebar = () => {
                   Students
                 </Link>
               </li>
-              <li>
-                <Link 
-                  to="/employees"
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/employees") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <UserCog size={20} className="mr-2" />
-                  Employees
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/stations"
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/stations") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <MapPin size={20} className="mr-2" />
-                  Stations
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/expenses" 
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/expenses") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <Wallet size={20} className="mr-2" />
-                  Expenses
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/messages" 
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/messages") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <MessageSquare size={20} className="mr-2" />
-                  Messages
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/users" 
-                  className={`flex items-center p-2 rounded transition ${
-                    isActive("/users") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-                  }`}
-                >
-                  <Users size={20} className="mr-2" />
-                  Users
-                </Link>
-              </li>
+              {userRole==3 && ( 
+                <>
+                <li>
+                  <Link 
+                    to="/messages" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/messages") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <MessageSquare size={20} className="mr-2" />
+                    Messages
+                  </Link>
+                </li>
+                </>
+              )}
+              {userRole<3 && ( <>
+                <li>
+                  <Link 
+                    to="/teachers"
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/teachers") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <UserCog size={20} className="mr-2" />
+                    Teachers
+                  </Link>
+                </li>              
+                <li>
+                  <Link
+                    to="/stations"
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/stations") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <MapPin size={20} className="mr-2" />
+                    Stations
+                  </Link>
+                </li>
+                <li>
+                  <Link 
+                    to="/messages" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/messages") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <MessageSquare size={20} className="mr-2" />
+                    Messages
+                  </Link>
+                </li>
+                {/* <li>
+                  <Link 
+                    to="/schoolYears" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/schoolYears") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <Calendar size={20} className="mr-2" />
+                    School Years
+                  </Link>
+                </li> */}
+                <li>
+                  <Link 
+                    to="/users" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/users") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <Users size={20} className="mr-2" />
+                    Users
+                  </Link>
+                </li>
+                </> 
+              )}
               <li>
                 <Link
                   to="/logout" 
@@ -148,7 +187,7 @@ const Sidebar = () => {
       {/* Overlay when sidebar is open */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 md:hidden"
+          className="fixed inset-0 bg-black/50 bg-opacity-30 md:hidden"
           onClick={() => setIsOpen(false)}
         ></div>
       )}
