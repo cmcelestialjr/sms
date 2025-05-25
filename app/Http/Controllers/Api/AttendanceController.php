@@ -131,7 +131,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access. Invalid API key.',
-            ], 403); // Forbidden
+            ], 403);
         }
 
         // Find the station by IP address
@@ -141,7 +141,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Station not registered.',
-            ], 404);
+            ]);
         }
 
         // Detect method based on code
@@ -159,21 +159,21 @@ class AttendanceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Student not found.',
-            ], 404);
+            ]);
         }
 
         // Check for duplicate scan within 30 minutes
-        // $recentScan = Attendance::where('student_id', $student->id)
-        //     ->where('station_id', $station->id)
-        //     ->where('scanned_at', '>=', Carbon::now()->subMinutes(30))
-        //     ->first();
+        $recentScan = Attendance::where('student_id', $student->id)
+            ->where('station_id', $station->id)
+            ->where('scanned_at', '>=', Carbon::now()->subMinutes(30))
+            ->first();
 
-        // if ($recentScan) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Duplicate scan detected. Please wait before scanning again.',
-        //     ]);
-        // }
+        if ($recentScan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Duplicate scan detected. Please wait 30 minutes before scanning again.',
+            ]);
+        }
 
         $scanned_at = now();
 
