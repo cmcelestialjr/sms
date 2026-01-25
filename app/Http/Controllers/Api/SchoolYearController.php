@@ -13,21 +13,21 @@ class SchoolYearController extends Controller
     {
         $search = $request->query('search');
 
-        $students = SchoolYear::with('term','teachers')
+        $schoolYear = SchoolYear::with('term','teachers')
             ->when($search, function ($query, $search) {
-            $query->where('sy_from', 'like', "%$search%")
-                ->orWhere('sy_to', 'like', "%$search%");
-        });
+                $query->where('sy_from', 'like', "%$search%")
+                    ->orWhere('sy_to', 'like', "%$search%");
+            });
         
-        $students = $students->orderBy('sy_from','DESC')->paginate(10);
+        $schoolYears = $schoolYear->orderBy('sy_from','DESC')->paginate(10);
 
         return response()->json([
-            'data' => $students->items(),
+            'data' => $schoolYears->items(),
             'meta' => [
-                'current_page' => $students->currentPage(),
-                'last_page' => $students->lastPage(),
-                'prev' => $students->previousPageUrl(),
-                'next' => $students->nextPageUrl(),
+                'current_page' => $schoolYears->currentPage(),
+                'last_page' => $schoolYears->lastPage(),
+                'prev' => $schoolYears->previousPageUrl(),
+                'next' => $schoolYears->nextPageUrl(),
             ]
         ]);
     }
@@ -66,14 +66,18 @@ class SchoolYearController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'year_from' => 'required|integer|min:1000|max:9999',
-            'year_to' => 'required|integer|min:1000|max:9999|gte:year_from',
+            'sy_from' => 'required|integer|min:1000|max:9999',
+            'sy_to' => 'required|integer|min:1000|max:9999|gte:sy_from',
+            'date_from' => 'required|date',
+            'date_to' => 'required|date|after_or_equal:date_from',
         ]);
 
         $query = SchoolYear::create([
-            'year_from' => $request->year_from,
-            'year_to' => $request->year_to,
-            'school_term_id' => 1
+            'sy_from' => $request->sy_from,
+            'sy_to' => $request->sy_to,
+            'school_term_id' => 1,
+            'date_from' => $request->date_from,
+            'date_to' => $request->date_to,
         ]);
 
         return response()->json($query, 200);
@@ -84,17 +88,21 @@ class SchoolYearController extends Controller
         $query = SchoolYear::find($id);
 
         if (!$query) {
-            return response()->json(['error' => 'Station not found'], 404);
+            return response()->json(['error' => 'School Year not found'], 404);
         }
 
         $request->validate([
-            'year_from' => 'required|integer|min:1000|max:9999',
-            'year_to' => 'required|integer|min:1000|max:9999|gte:year_from',
+            'sy_from' => 'required|integer|min:1000|max:9999',
+            'sy_to' => 'required|integer|min:1000|max:9999|gte:sy_from',
+            'date_from' => 'required|date',
+            'date_to' => 'required|date|after_or_equal:date_from',
         ]);
 
         $query->update([
-            'year_from' => $request->year_from,
-            'year_to' => $request->year_to,
+            'sy_from' => $request->sy_from,
+            'sy_to' => $request->sy_to,
+            'date_from' => $request->date_from,
+            'date_to' => $request->date_to,
         ]);
 
         return response()->json($query);

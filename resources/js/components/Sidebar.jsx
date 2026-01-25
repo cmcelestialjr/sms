@@ -11,7 +11,13 @@ import { Menu,
     Calendar,
     UserCog,
     LogOut,
-    User, } 
+    User,
+    CalendarX,
+    PartyPopper,
+    Plane,
+    CalendarDays,
+    NotebookText,
+    FileText, } 
         from "lucide-react";
 
 const Sidebar = () => {
@@ -20,9 +26,11 @@ const Sidebar = () => {
   const userRole = localStorage.getItem("userRole");
   const userName = localStorage.getItem("userName");
   const userPhoto = localStorage.getItem("userPhoto");
+  const userId = localStorage.getItem("userId");
 
   // Function to check if a link is active
-  const isActive = (path) => location.pathname === path;
+  // const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname.startsWith(path);
 
   return (
     <>
@@ -36,8 +44,8 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-screen w-64 bg-white text-black border-r shadow-md z-50 transform transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "-translate-x-64"
+        className={`fixed top-0 left-0 h-screen w-64 bg-white text-black rounded-md shadow-2xl border border-gray-200 z-50 transform transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "-translate-x-72"
         } md:translate-x-0`}
       >
         <div className="overflow-y-auto max-h-screen">
@@ -82,6 +90,17 @@ const Sidebar = () => {
                 >
                   <CalendarCheck size={20} className="mr-2" />
                   Attendances
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/absences" 
+                  className={`flex items-center p-2 rounded transition ${
+                    isActive("/absences") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                  }`}
+                >
+                  <CalendarX size={20} className="mr-2" />
+                  Absences
                 </Link>
               </li>
               <li>
@@ -144,7 +163,7 @@ const Sidebar = () => {
                     Messages
                   </Link>
                 </li>
-                {/* <li>
+                <li>
                   <Link 
                     to="/schoolYears" 
                     className={`flex items-center p-2 rounded transition ${
@@ -154,7 +173,18 @@ const Sidebar = () => {
                     <Calendar size={20} className="mr-2" />
                     School Years
                   </Link>
-                </li> */}
+                </li>
+                <li>
+                  <Link 
+                    to="/holidays" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/holidays") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <Plane size={20} className="mr-2" />
+                    Holidays
+                  </Link>
+                </li>
                 <li>
                   <Link 
                     to="/users" 
@@ -166,8 +196,43 @@ const Sidebar = () => {
                     Users
                   </Link>
                 </li>
+                {/* <li>
+                  <Link 
+                    to="/dtrs"
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/dtrs") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <CalendarDays size={20} className="mr-2" />
+                    Dtr List
+                  </Link>
+                </li> */}
                 </> 
               )}
+
+              <li>
+                  <Link 
+                    to="/reports" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/reports") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <FileText size={20} className="mr-2" />
+                    Reports
+                  </Link>
+              </li>
+
+              {/* <li>
+                <Link 
+                  to={`/dtr/${userId}/my`}
+                  className={`flex items-center p-2 rounded transition ${
+                    isActive("/dtr") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                  }`}
+                >
+                  <NotebookText size={20} className="mr-2" />
+                  Dtr
+                </Link>
+              </li> */}
               <li>
                 <Link
                   to="/logout" 

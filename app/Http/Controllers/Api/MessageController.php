@@ -194,7 +194,7 @@ class MessageController extends Controller
             $message = str_replace(" ","_S_S_",$message);
             $message = str_replace("%","_P_P_",$message);
 
-            dispatch(new SendSmsJob($target_id, $contact_no, $message));
+            dispatch(new SendSmsJob($target_id, $contact_no, $message))->onQueue('gsmMessage');
 
             //run php artisan queue:work database
         }

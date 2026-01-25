@@ -14,6 +14,8 @@ class SchoolYear extends Model
         'sy_from',
         'sy_to',
         'school_term_id',
+        'date_from',
+        'date_to'
     ];
 
     protected $appends = ['teachers_count', 'students_count'];
@@ -24,8 +26,9 @@ class SchoolYear extends Model
     }
     public function teachers()
     {
-        return $this->hasMany(Teacher::where('sy_from', $this->sy_from)
-                ->where('sy_to', $this->sy_to));
+        return $this->hasMany(Teacher::class)
+                    ->where('sy_from', $this->sy_from)
+                    ->where('sy_to', $this->sy_to);
     }
     public function getTeachersCountAttribute(): int
     {

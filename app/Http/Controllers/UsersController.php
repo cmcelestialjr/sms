@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SchoolYearStudent;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
@@ -315,6 +316,16 @@ class UsersController extends Controller
 
             if($request->status=='Active'){
                 Student::where('teachers_id',$teacher_id)
+                    ->where('status','Active')
+                    ->update([
+                    'sy_from' => $sy_from,
+                    'sy_to' => $sy_to,
+                    'level' => $request->level,
+                    'grade' => $request->grade,
+                    'section' => $request->section,
+                ]);
+
+                SchoolYearStudent::where('teacher_id',$teacher_id)
                     ->where('status','Active')
                     ->update([
                     'sy_from' => $sy_from,

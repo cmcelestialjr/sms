@@ -8,7 +8,7 @@ const Logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userRole");
 
-    navigate("/", { replace: true });
+    navigate("/login", { replace: true });
   }, [navigate]);
 
   return null;

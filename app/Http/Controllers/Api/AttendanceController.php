@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\AbsencesJob;
 use App\Jobs\SendSmsAttendanceJob;
+use App\Jobs\SendSmsAttendanceJob1;
 use App\Models\Attendance;
+use App\Models\AttendanceDailySummary;
+use App\Models\DeviceSequence;
+use App\Models\SchoolInfo;
 use App\Models\Student;
 use App\Models\Station;
 use App\Models\Teacher;
@@ -25,21 +30,52 @@ class AttendanceController extends Controller
 
     public function index(Request $request)
     {
-        $request->validate([
-            'id' => 'required|numeric|min:1|exists:stations,id',
-            'timeNow' => 'required|string',
+        $validated = $request->validate([
+            'year' => 'required|numeric',
+            'month' => 'required|numeric',
+            'search' => 'nullable|string',
         ]);
 
-        // $attendances = Attendance::with('student')
-        //     ->where('station_id', $request->id)
-        //     ->whereDate('scanned_at',date('Y-m-d',strtotime($request->timeNow)))
-        //     ->orderBy('scanned_at','DESC')
-        //     ->limit(6)
-        //     ->get();
+        $year = $validated['year'];
+        $month = $validated['month'];
+        $search = $validated['search'];
+        
+        $query = Student::with(['attendances' => function ($query) use ($year, $month) 
+                {
+                    $query->whereYear('scanned_at', $year)
+                        ->whereMonth('scanned_at', $month);
+                }
+            ])
+            ->with(['attendanceDailySummary' => function ($query) use ($year, $month) 
+                {
+                    $query->whereYear('date', $year)
+                        ->whereMonth('date', $month);
+                }
+            ])
+            ->with(['absences' => function ($query) use ($year, $month) 
+                {
+                    $query->whereYear('date', $year)
+                        ->whereMonth('date', $month);
+                }
+            ])
+            ->where('status','Active');
 
-        $attendances = [];
+        if (!empty($search)) {
+            $query->where(function ($query) use ($search) {
+                $query->where('student_id', 'LIKE', "%{$search}%");
+                $query->orWhere('lastname', 'LIKE', "%{$search}%");
+                $query->orWhere('firstname', 'LIKE', "%{$search}%");
+            });
+        }
 
-        return response()->json($attendances);
+        $students = $query
+            ->orderBy('lastname','ASC')
+            ->orderBY('firstname','ASC')
+            ->get();
+        
+        return response()->json([
+            'data' => $students
+        ]);
     }
 
     public function count(Request $request)
@@ -98,7 +134,23 @@ class AttendanceController extends Controller
                     ->whereDate('scanned_at', '<=', date('Y-m-d',strtotime($endDate)));
             })
             ->when($type, function ($query, $type) {
-                $query->where('type', $type);
+                if($type=='InAm'){
+                    $query->where('type', 'In');
+                    $query->whereTime('scanned_at', '<=', '11:30:00');
+                }elseif($type=='OutAm'){
+                    $query->where('type', 'Out')
+                        ->whereTime('scanned_at', '>', '11:30:00')
+                        ->whereTime('scanned_at', '<=', '13:30:00');
+                }elseif($type=='InPm'){
+                    $query->where('type', 'In')
+                        ->whereTime('scanned_at', '>', '11:30:00')
+                        ->whereTime('scanned_at', '<=', '13:30:00');
+                }elseif($type=='OutPm'){
+                    $query->where('type', 'Out')
+                        ->whereTime('scanned_at', '>', '13:30:00');
+                }else{
+                    $query->where('type', $type);
+                }
             });
 
         if($user->role_id==3){
@@ -121,18 +173,28 @@ class AttendanceController extends Controller
 
     public function scan(Request $request)
     {
+        return $this->handleScan($request,'rfid');
+    }
+
+    public function scanQr(Request $request)
+    {
+        return $this->handleScan($request,'qr');
+    }
+
+    private function handleScan($request,$typeScan)
+    {
         $request->validate([
             'id' => 'required|integer',
-            'code' => 'required|string',
+            'code' => 'required',
             'api_key' => 'required|string',
         ]);
 
-        if ($request->api_key !== env('ATTENDANCE_API_KEY')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized access. Invalid API key.',
-            ], 403);
-        }
+        // if ($request->api_key !== env('ATTENDANCE_API_KEY')) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Unauthorized access. Invalid API key.',
+        //     ], 403);
+        // }
 
         // Find the station by IP address
         $station = Station::find($request->id);
@@ -145,13 +207,15 @@ class AttendanceController extends Controller
         }
 
         // Detect method based on code
-        $method = str_starts_with($request->code, 'qr-') ? 'qr' : 'rfid';
-
+        // $method = str_starts_with($request->code, 'qr-') ? 'qr' : 'rfid';
+ 
         // If QR code, remove the 'qr-' prefix
-        $searchCode = $method === 'qr' 
-            ? substr($request->code, 3) 
-            : $request->code;
+        // $searchCode = $method === 'qr' ? substr($request->code, 3)  : $request->code;
 
+        $method = $typeScan;
+        $scannedData = $request->code;
+        $searchCode = $typeScan=='qr' ? $scannedData[0]['rawValue'] ?? null : $scannedData;
+        
         // Find the student
         $student = Student::where($method === 'qr' ? 'qr_code' : 'rfid_tag', $searchCode)->first();
 
@@ -178,6 +242,7 @@ class AttendanceController extends Controller
         $scanned_at = now();
 
         $student = $this->updateStudent($student);
+        $student_id = $student->id;
 
         $getType = $this->getType($student,$scanned_at);
 
@@ -188,7 +253,7 @@ class AttendanceController extends Controller
         
         // Record attendance
         $createAttendance = Attendance::create([
-            'student_id' => $student->id,
+            'student_id' => $student_id,
             'station_id' => $station->id,
             'type' => $type,
             'method' => $method,
@@ -203,7 +268,11 @@ class AttendanceController extends Controller
             'teachers_id' => $student->teachers_id
         ]);
 
+        $this->updateDailySummary($scanned_at, $student_id, $type, $student);        
+
         $attendance = Attendance::with('student')->where('id',$createAttendance->id)->first();
+        $shoolInfo = SchoolInfo::first();
+        $schoolName = $shoolInfo ? $shoolInfo->name : 'CDEVITSolutions';
 
         $target_id = $createAttendance->id;
         $contact_no = $attendance->student->contact_no;
@@ -223,11 +292,39 @@ class AttendanceController extends Controller
 
         $name = "$lastname, $firstname $extname $middleInitial";
         
-        $message = $name." ".$message_type." in Alangalang National School at " . date('h:i:s A', strtotime($scanned_at)). " on " . date('M d, Y', strtotime($scanned_at));
+        $message = $name." ".$message_type." in " . $schoolName . " at " . date('h:i:s A', strtotime($scanned_at)). " on " . date('M d, Y', strtotime($scanned_at));
         
         $message = str_replace(" ","_",$message);
 
-        dispatch(new SendSmsAttendanceJob($target_id, $contact_no, $message));
+        dispatch(new SendSmsAttendanceJob($target_id, $contact_no, $message))->onQueue('gsmAttendance');
+
+        // $deviceSequence = DeviceSequence::first();
+
+        // if($deviceSequence){
+        //     if($deviceSequence->name=='COM3'){
+        //         dispatch(new SendSmsAttendanceJob1($target_id, $contact_no, $message))->onQueue('gsmAttendance1');
+        //     }else{
+        //         dispatch(new SendSmsAttendanceJob($target_id, $contact_no, $message))->onQueue('gsmAttendance');
+        //     }
+        // }else{
+        //     dispatch(new SendSmsAttendanceJob($target_id, $contact_no, $message))->onQueue('gsmAttendance');
+        // }
+
+        // if($deviceSequence){
+        //     if($deviceSequence->name=='COM3'){
+        //         $deviceName = 'COM4';
+        //     }else{
+        //         $deviceName = 'COM3';
+        //     }
+        //     $updateDeviceSequence = DeviceSequence::find($deviceSequence->id);
+        // }else{
+        //     $deviceName = 'COM4';
+        //     $updateDeviceSequence = new DeviceSequence;
+        // }
+        // $updateDeviceSequence->name = $deviceName;
+        // $updateDeviceSequence->save();
+
+        dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');
 
         // $attendances = Attendance::with('student')
         //     ->whereNotIn('id',[$createAttendance->id])
@@ -240,7 +337,7 @@ class AttendanceController extends Controller
         $attendances = [];
 
         if ($attendance && $attendance->student) {
-            $attendance->student->photo = $attendance->student->photo 
+            $attendance->student->photo = $attendance->student->photo
                 ? asset("storage/{$attendance->student->photo}") 
                 : asset('images/no-image-icon.png');
         }
@@ -251,6 +348,11 @@ class AttendanceController extends Controller
             'student' => $attendance,
             'attendances' => $attendances
         ]);
+    }
+
+    public function calendar(Request $request)
+    {
+        
     }
 
     private function updateStudent($student)
@@ -324,6 +426,72 @@ class AttendanceController extends Controller
                 'message_type' => "has LOGGED IN"
             ];
         }
+    }
 
+    private function updateDailySummary($scanned_at, $student_id, $type, $student)
+    {
+        $dateSummary = date('Y-m-d', strtotime($scanned_at));
+
+        $checkSummary = AttendanceDailySummary::where('date', $dateSummary)
+            ->where('student_id', $student_id)
+            ->first();
+        if($checkSummary){            
+            $summaryAmOut = $checkSummary->actual_am_out;
+            $is_late = $checkSummary->is_late;
+            $is_undertime = $checkSummary->is_undertime;
+            $is_excused = $checkSummary->is_excused;
+            $insertSummary = $checkSummary;
+        }else{
+            $summaryAmOut = '';
+            $is_late = 0;
+            $is_undertime = 0;
+            $is_excused = 0;
+            $insertSummary = new AttendanceDailySummary;
+            $insertSummary->student_id = $student_id;
+            $insertSummary->date = $dateSummary;            
+        }
+
+        $scanned_at_time = date('H:i:s', strtotime($scanned_at));
+        $actual_am_in = '';
+        $actual_am_out = '';
+        $actual_pm_in = '';
+        $actual_pm_out = '';
+
+        if($type=='In'){
+            if($scanned_at <= '11:30:00'){
+                $actual_am_in = $scanned_at_time;
+            }else{
+                $actual_pm_in = $scanned_at_time;
+            }
+        }else{
+            if($scanned_at <= '13:30:00' && $summaryAmOut == ''){
+                $actual_am_out = $scanned_at_time;
+            }else{
+                $actual_pm_out = $scanned_at_time;
+            }
+        }
+
+        if($actual_am_in != ''){
+            $insertSummary->actual_am_in = $actual_am_in;
+        }
+        if($actual_pm_in != ''){
+            $insertSummary->actual_pm_in = $actual_pm_in;
+        }
+        if($actual_am_out != ''){
+            $insertSummary->actual_am_out = $actual_am_out;
+        }
+        if($actual_pm_out != ''){
+            $insertSummary->actual_pm_out = $actual_pm_out;
+        }
+        $insertSummary->sy_from = $student->sy_from;
+        $insertSummary->sy_to = $student->sy_to;
+        $insertSummary->level = $student->level;
+        $insertSummary->grade = $student->grade;
+        $insertSummary->section = $student->section;
+        $insertSummary->teachers_id = $student->teachers_id;
+        $insertSummary->is_late = $is_late;
+        $insertSummary->is_undertime = $is_undertime;
+        $insertSummary->is_excused = $is_excused;
+        $insertSummary->save();
     }
 }

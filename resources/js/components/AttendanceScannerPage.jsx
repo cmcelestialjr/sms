@@ -18,7 +18,9 @@
       const [loggedOutCount, setLoggedOutCount] = useState(0);
       const inputRef = useRef(null);
       const audioRef = useRef(null);
+      const scanTimeoutRef = useRef(null);
 
+      
       useEffect(() => {
         // Update Time Every Second
         const timer = setInterval(() => {
@@ -55,6 +57,17 @@
         fetchAttendances();
         handleCount();
       }, []);
+
+      const resetScanTimeout = () => {
+        if (scanTimeoutRef.current) {
+          clearTimeout(scanTimeoutRef.current);
+        }
+
+        scanTimeoutRef.current = setTimeout(() => {
+          setScannedStudent(null);
+        }, 30000); // 30 seconds
+      };
+
 
       const fetchAttendances = async () => {
         const response = await axios.get('/api/attendances', {
@@ -114,7 +127,9 @@
           if (response.data.success) {
             const scannedStudent = response.data.student;
             setScannedStudent(scannedStudent);            
-            setRecentAttendances(response.data.attendances);            
+            setRecentAttendances(response.data.attendances);
+            resetScanTimeout();
+            
           }else{
             toastr.error(response.data.message, "Error");
           }

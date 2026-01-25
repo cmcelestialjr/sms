@@ -16,6 +16,10 @@ return new class extends Migration
             $table->year('year_from')->index();
             $table->year('year_to')->index();
             $table->integer('school_term_id')->index();
+            $table->date('date_from')->index();
+            $table->date('date_to');
+            $table->date('enrollment_start')->nullable();
+            $table->date('enrollment_end')->nullable();
             $table->timestamps();
         });
     }

@@ -1,26 +1,30 @@
 <?php
 
+use App\Http\Controllers\Api\AbsenceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DtrController;
 use App\Http\Controllers\Api\GradeController;
+use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\SchoolYearController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\StationController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
+use App\Http\Controllers\Reports\Sf2Controller;
 use App\Http\Controllers\UsersController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
 // For Attendance Scanning
 Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
+Route::post('/attendance/scan/qr', [AttendanceController::class, 'scanQr']);
 Route::get('/attendances', [AttendanceController::class, 'index']);
 Route::get('/attendance/count', [AttendanceController::class, 'count']);
-
 
 
 //For Managing Stations
@@ -32,6 +36,9 @@ Route::get('/stations/{id}', [StationController::class, 'show']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/attendances/lists', [AttendanceController::class, 'lists']);
+    Route::get('/attendances', [AttendanceController::class, 'index']);
+
+    Route::get('/absences/index', [AbsenceController::class, 'index']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
@@ -66,7 +73,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/schoolYears', [SchoolYearController::class, 'store']);
     Route::put('/schoolYears/{id}', [SchoolYearController::class, 'update']);
 
+    Route::get('/holidays', [HolidayController::class, 'index']);
+    Route::post('/holidays', [HolidayController::class, 'store']);
+    Route::put('/holidays/{id}', [HolidayController::class, 'update']);
+
     Route::get('/grades', [GradeController::class, 'index']);
 
     Route::get('/sections', [SectionController::class, 'index']);
+
+    Route::get('/dtr', [DtrController::class, 'index']);
+
+    Route::post('/reports/sf2', [Sf2Controller::class, 'index']);
 });

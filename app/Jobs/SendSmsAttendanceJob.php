@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Attendance;
+use App\Models\DeviceSequence;
 use Illuminate\Bus\Queueable;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,7 +33,7 @@ class SendSmsAttendanceJob implements ShouldQueue
 
         $pythonPath = 'C:\Users\User\Desktop\cesar\Python\.venv\Scripts\python.exe';
 
-        $scriptPath = base_path('storage/app/private/python/send_sms_attendance.py');
+        $scriptPath = base_path('storage/app/private/python/send_sms_attendance.py');        
 
         $process = Process::run("{$pythonPath} {$scriptPath} {$this->contact_no} \"" . escapeshellarg($this->message) . "\"");
         
@@ -43,6 +44,6 @@ class SendSmsAttendanceJob implements ShouldQueue
             $status = 'Error';
         }
         $update->message_status = $status;
-        $update->save();
+        $update->save();        
     }
 }

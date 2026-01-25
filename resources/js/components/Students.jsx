@@ -618,6 +618,19 @@ const Students = () => {
                                         disabled={userRole > 2 && isEditMode}
                                     />
                                 </div>
+
+                                {/* QR CODE */}
+                                <div className="flex flex-col"> 
+                                    <label className="text-sm font-medium text-gray-700 mb-1">QR CODE</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter QR CODE"
+                                        value={studentForm.qr_code}
+                                        onChange={(e) => setStudentForm({ ...studentForm, qr_code: e.target.value })}
+                                        className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        disabled={userRole > 2 && isEditMode}
+                                    />
+                                </div>
                                 
                                 {/* Student ID */}
                                 {isEditMode && (                                

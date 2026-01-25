@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsNewStudentJob;
 use App\Models\Attendance;
+use App\Models\SchoolYearStudent;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Services\SchoolYearServices;
@@ -93,8 +94,7 @@ class StudentController extends Controller
             if($user->role_id==3 && $request->f=='message'){
                 $students->where('teachers_id',$user->id);
             }
-        }
-        
+        }        
 
         $students = $students->limit(10)
             ->get();
@@ -118,7 +118,8 @@ class StudentController extends Controller
         }
 
         $validated = $request->validate([
-            'rfid_tag' => 'required|string',
+            'rfid_tag' => 'nullable|string',
+            'qr_code' => 'nullable|string',
             'lrn_no' => 'required|string',
             // 'student_id' => 'required|unique:students',
             'lastname' => 'required|string',
@@ -136,11 +137,12 @@ class StudentController extends Controller
         $student_id = $this->getStudentId();
 
         $validated['student_id'] = $student_id;
-
-        $validated['middlename'] = $request->input('middlename') ?? '';
-        $validated['extname'] = $request->input('extname') ?? '';
-        $validated['email'] = $request->input('email') ?? "";
-        $validated['address'] = $request->input('address') ?? "";
+        $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
+        $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
+        $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
+        $validated['extname'] = $request->extname=='null' ? null : $request->extname;
+        $validated['email'] = $request->email=='null' ? null : $request->email;
+        $validated['address'] = $request->address=='null' ? null : $request->address;
 
         if ($request->hasFile('newPhoto')) {
             $request->validate([
@@ -181,6 +183,8 @@ class StudentController extends Controller
         $validated['teachers_id'] = $teachers_id;
 
         $student = Student::create($validated);
+
+        $this->updateSchoolYearStudent($student, 'store');
 
         $lastname = mb_strtoupper($student->lastname);
         $firstname = mb_strtoupper($student->firstname);        
@@ -234,7 +238,8 @@ class StudentController extends Controller
         $student = Student::findOrFail($id);
 
         $validated = $request->validate([
-            'rfid_tag' => 'required|string',
+            'rfid_tag' => 'nullable|string',
+            'qr_code' => 'nullable|string',
             'student_id' => 'required|unique:students,student_id,' . $id,
             'lastname' => 'required|string',
             'firstname' => 'required|string',
@@ -249,10 +254,12 @@ class StudentController extends Controller
             'status' => 'required|in:Active,Inactive'
         ]);
         
-        $validated['middlename'] = $request->input('middlename') ?? "";
-        $validated['extname'] = $request->input('extname') ?? "";
-        $validated['email'] = $request->input('email') ?? "";
-        $validated['address'] = $request->input('address') ?? "";
+        $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
+        $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
+        $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
+        $validated['extname'] = $request->extname=='null' ? null : $request->extname;
+        $validated['email'] = $request->email=='null' ? null : $request->email;
+        $validated['address'] = $request->address=='null' ? null : $request->address;
 
         if ($request->hasFile('newPhoto')) {
             $request->validate([
@@ -291,6 +298,9 @@ class StudentController extends Controller
         }
         
         $student->update($validated);
+
+        $this->updateSchoolYearStudent($student, 'update');
+
         return $student;
     }
 
@@ -394,4 +404,34 @@ class StudentController extends Controller
         return $student_id;
     }
 
+    private function updateSchoolYearStudent($student, $from)
+    {
+        $check = SchoolYearStudent::where('student_id',$student->id)
+            ->where('sy_from',$student->sy_from)
+            ->where('sy_to',$student->sy_to)
+            ->where('level',$student->level)
+            ->first();
+        if($check){
+            $update = SchoolYearStudent::find($check->id);
+        }else{
+            $update = new SchoolYearStudent();
+            $update->student_id = $student->id;
+            $update->sy_from = $student->sy_from;
+            $update->sy_to = $student->sy_to;
+            $update->level = $student->level;
+            $update->date_enrolled = date('Y-m-d');
+            $update->is_transferred = 0;
+        }
+        $update->grade = $student->grade;
+        $update->section = $student->section;
+        $update->teacher_id = $student->teachers_id;
+        $update->status = $student->status;
+
+        if($from!='update' && $from!='store'){
+            $update->date_enrolled = $student->date_enrolled;
+            $update->is_transferred = $student->is_transferred;
+        }
+        
+        $update->save();
+    }
 }

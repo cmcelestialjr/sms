@@ -13,6 +13,8 @@ const SchoolYearModal = ({ show, onClose, onSave, schoolYear }) => {
     const [schoolYearData, setSchoolYearData] = useState({
         sy_from: currentYear,
         sy_to: endYear,
+        date_from: null,
+        date_to: null,
     });
 
     useEffect(() => {
@@ -20,6 +22,8 @@ const SchoolYearModal = ({ show, onClose, onSave, schoolYear }) => {
             setSchoolYearData({
                 sy_from: schoolYear.sy_from,
                 sy_to: schoolYear.sy_to,
+                date_from: schoolYear.date_from,
+                date_to: schoolYear.date_to
             });
         }
     }, [schoolYear]);
@@ -49,6 +53,7 @@ const SchoolYearModal = ({ show, onClose, onSave, schoolYear }) => {
                     {schoolYear ? 'Edit School Year' : 'New School Year'}
                 </h3>
                 <form onSubmit={handleSubmit}>
+                    {/* Year From Select */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium mb-2 text-gray-700">Year From</label>
                         <select
@@ -58,14 +63,15 @@ const SchoolYearModal = ({ show, onClose, onSave, schoolYear }) => {
                             className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
                         >
-                        {years.map((year) => (
-                            <option key={year} value={year}>
-                                {year}
-                            </option>
-                        ))}
+                            {years.map((year) => (
+                                <option key={year} value={year}>
+                                    {year}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
+                    {/* Year To Select */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium mb-2 text-gray-700">Year To</label>
                         <select
@@ -75,13 +81,41 @@ const SchoolYearModal = ({ show, onClose, onSave, schoolYear }) => {
                             className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
                         >
-                        {years.map((year) => (
-                            <option key={year} value={year}>
-                                {year}
-                            </option>
-                        ))}
+                            {years.map((year) => (
+                                <option key={year} value={year}>
+                                    {year}
+                                </option>
+                            ))}
                         </select>
                     </div>
+
+                    {/* Date From Input */}
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium mb-2 text-gray-700">Date From</label>
+                        <input
+                            type="date"
+                            name="date_from"
+                            value={schoolYearData.date_from}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                        />
+                    </div>
+
+                    {/* Date To Input */}
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium mb-2 text-gray-700">Date To</label>
+                        <input
+                            type="date"
+                            name="date_to"
+                            value={schoolYearData.date_to}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                        />
+                    </div>
+
+                    {/* Action Buttons */}
                     <div className="flex justify-end space-x-4">
                         <button
                             type="button"
@@ -100,6 +134,7 @@ const SchoolYearModal = ({ show, onClose, onSave, schoolYear }) => {
                 </form>
             </div>
         </div>
+
 
     );
 };

@@ -113,7 +113,7 @@ const SchoolYears = () => {
                         <thead className="bg-gray-100 text-xs text-gray-700 uppercase">
                             <tr>
                                 <th className="border border-gray-300 px-4 py-2">School Year</th>
-                                {/* <th className="border border-gray-300 px-4 py-2">Term</th> */}
+                                <th className="border border-gray-300 px-4 py-2">Duration</th>
                                 <th className="border border-gray-300 px-4 py-2">Teachers</th>
                                 <th className="border border-gray-300 px-4 py-2">Students</th>
                                 <th className="border border-gray-300 px-4 py-2">Action</th>
@@ -123,6 +123,17 @@ const SchoolYears = () => {
                             {schoolYears?.map((schoolYear) => (
                                 <tr key={schoolYear.id} className="border-t">
                                     <td className="border border-gray-300 px-4 py-2">{schoolYear.sy_from}-{schoolYear.sy_to}</td>
+                                    <td className="border border-gray-300 px-4 py-2">
+                                        {new Date(schoolYear.date_from).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                        })} - {new Date(schoolYear.date_to).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                        })}
+                                    </td>
                                     <td className="border border-gray-300 px-4 py-2 text-center">
                                         <div className="flex justify-center">
                                             <button
@@ -136,7 +147,7 @@ const SchoolYears = () => {
                                     <td className="border border-gray-300 px-4 py-2 text-center">
                                         <div className="flex justify-center">
                                             <button
-                                                onClick={handleAdd}
+                                                // onClick={handleAdd}
                                                 className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-600 transition cursor-pointer"
                                             >
                                                 {schoolYear.students_count}

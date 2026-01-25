@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
-            $table->foreignId('station_id')->constrained('stations')->onDelete('cascade');
+            $table->unsignedBigInteger('student_id')->index();
+            $table->unsignedBigInteger('station_id')->index();
             $table->timestamp('scanned_at')->useCurrent();
             $table->enum('type', ['In', 'Out'])->index();
             $table->enum('method', ['qr', 'rfid']);
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('level', ['Kinder', 'Elementary', 'Junior High School', 'Senior High School'])->index();
             $table->string('grade')->index();
             $table->string('section')->index();
-            $table->unsignedBigInteger('teachers_id')->nullable();
+            $table->unsignedBigInteger('teachers_id')->index()->nullable();
             $table->enum('message_status', ['Success', 'Error'])->index();
             $table->timestamps();
         });

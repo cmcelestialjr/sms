@@ -1,0 +1,56 @@
+/* print.css */
+
+@media print {
+    /* Ensures the content is centered and doesn't overflow the page */
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .print-container {
+        width: 100%; /* Set a max-width for the print content */
+        max-width: 800px; /* Adjust the max-width as per your needs */
+        margin: 0 auto; /* Center the content horizontally */
+        padding-top: 20px;
+        padding-bottom: 20px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    /* Adjust table layout */
+    .min-w-full {
+        width: 100%;
+        max-width: 100%; /* Prevents tables from overflowing */
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse; /* Ensures tables look neat */
+    }
+
+    th, td {
+        padding: 8px; /* Add some padding for readability */
+        text-align: left;
+    }
+
+    /* Optionally hide navigation buttons or any unnecessary elements during print */
+    .no-print {
+        display: none;
+    }
+
+    /* Adjust font size and layout if necessary */
+    th, td {
+        font-size: 12px;
+        padding: 0px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+
+    .text-center{
+        text-align: center;
+    }
+
+    .dtr-info{
+        display: block;
+    }
+}

@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Layout from "./Layout";
-import { Edit, Plus, X, User, CheckCircle, XCircle, Check } from "lucide-react";
+import { Edit, Plus, X, User, CheckCircle, XCircle, Check, Link, NotebookText } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 import toastr from 'toastr';
 import Swal from "sweetalert2";
 import 'toastr/build/toastr.min.css';
 import "react-datepicker/dist/react-datepicker.css";
 
 const Teachers = () => {
+    const navigate = useNavigate();
     const [meta, setMeta] = useState(null);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -127,7 +129,7 @@ const Teachers = () => {
         try {
             const authToken = localStorage.getItem("token");
             const url = editingTeacher
-                ? `/api/users/${editingTeacher.id}`
+                ? `/api/users/update/${editingTeacher.id}`
                 : '/api/users/store';
             const method = editingTeacher ? 'post' : 'post';
     
@@ -149,9 +151,9 @@ const Teachers = () => {
                 formData.append('password', username);
             }
     
-            if (editingTeacher) {
-                formData.append('_method', 'PUT');
-            }
+            // if (editingTeacher) {
+            //     formData.append('_method', 'PUT');
+            // }
 
             formData.append('newPhoto', newPhoto);
     
@@ -411,12 +413,25 @@ const Teachers = () => {
                                             </div>                                         
                                         </td>
                                         <td className="border border-gray-300 px-4 py-2 text-right">
-                                            <button
-                                                onClick={() => handleEdit(teacher)}
-                                                className="text-blue-600 hover:underline mr-2 cursor-pointer"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
+                                            <div className="flex justify-end items-center space-x-2">
+                                                {/* Edit Button */}
+                                                <button
+                                                    onClick={() => handleEdit(teacher)}
+                                                    className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-600 rounded cursor-pointer hover:bg-blue-50 transition"
+                                                >
+                                                    <Edit size={16} className="mr-1" />
+                                                    Edit
+                                                </button>
+
+                                                {/* DTR Button */}
+                                                {/* <button
+                                                    onClick={() => navigate(`/dtr/${teacher.id}/list`)}
+                                                    className="flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded cursor-pointer hover:bg-blue-700 transition"
+                                                >
+                                                    <NotebookText size={16} className="mr-1" />
+                                                    DTR
+                                                </button> */}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

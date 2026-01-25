@@ -13,12 +13,19 @@ import Stations from './components/Stations';
 import Teachers from './components/Teachers';
 import Messages from './components/Messages';
 import SchoolYears from './components/SchoolYears';
+import Absences from './components/Absences';
+import Holidays from './components/holidays';
+import AttendanceStationListQr from './components/AttendanceStationListQr';
+import AttendanceScannerQr from './components/AttendanceScannerQr';
+import Dtrs from './components/Dtrs';
+import Dtr from './components/Dtr';
+import Reports from './components/Reports';
 
 function RouterApp() {  
   return (
     <Router>
       <Routes>
-        <Route path="/" 
+        <Route path="/login"
           element={<Login />} 
         />
 
@@ -26,8 +33,16 @@ function RouterApp() {
           element={<AttendanceStationListPage />}
         />
 
+        <Route path="/attendance/qr" 
+          element={<AttendanceStationListQr />}
+        />
+
         <Route path="/attendance/:id" 
           element={<AttendanceScanner />}
+        />
+
+        <Route path="/attendance/qr/:id" 
+          element={<AttendanceScannerQr />}
         />
 
         <Route path="/dashboard" 
@@ -41,6 +56,13 @@ function RouterApp() {
           element={
           <ProtectedRoute allowedRoles={["1","2","3"]}>
             <Attendances />
+          </ProtectedRoute>}
+        />
+
+        <Route path="/absences" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
+            <Absences />
           </ProtectedRoute>}
         />
 
@@ -72,11 +94,39 @@ function RouterApp() {
           </ProtectedRoute>}
         />
 
+        {/* <Route path="/dtr/:id/:from" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2","3"]}>
+            <Dtr />
+          </ProtectedRoute>}
+        /> */}
+
+        {/* <Route path="/dtrs" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2"]}>
+            <Dtrs />
+          </ProtectedRoute>}
+        /> */}
+
         <Route path="/schoolYears" 
           element={
           <ProtectedRoute allowedRoles={["1","2"]}>
             <SchoolYears />
           </ProtectedRoute>}
+        />
+
+        <Route path="/holidays" 
+          element={
+          <ProtectedRoute allowedRoles={["1","2"]}>
+            <Holidays />
+          </ProtectedRoute>}
+        />
+
+        <Route path="/reports" 
+          element={
+            <ProtectedRoute allowedRoles={["1"]}>
+              <Reports />
+            </ProtectedRoute>} 
         />
 
         <Route path="/users" 

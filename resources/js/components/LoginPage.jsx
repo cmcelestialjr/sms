@@ -67,6 +67,7 @@ const LoginPage = () => {
               localStorage.removeItem("token");
               localStorage.removeItem("userRole");
               localStorage.setItem('token', response.data.token);
+              localStorage.setItem('userId', response.data.userId);
               localStorage.setItem('userRole', response.data.userRole);
               localStorage.setItem('userName', response.data.userName);
               localStorage.setItem('userPhoto', response.data.userPhoto);

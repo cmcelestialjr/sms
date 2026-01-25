@@ -43,9 +43,21 @@ class Student extends Model
     {
         return $this->hasMany(Attendance::class, 'student_id', 'id');
     }
+    public function attendanceDailySummary(): HasMany
+    {
+        return $this->hasMany(AttendanceDailySummary::class, 'student_id', 'id');
+    }
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class, 'teachers_id', 'user_id');
+    }
+    public function schoolYearStudents()
+    {
+        return $this->hasMany(SchoolYearStudent::class, 'student_id', 'id');
+    }
+    public function absences()
+    {
+        return $this->hasMany(Absence::class, 'student_id', 'id');
     }
 }
 

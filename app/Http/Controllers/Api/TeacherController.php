@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\SchoolYearStudent;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Services\SchoolYearServices;
@@ -154,6 +155,28 @@ class TeacherController extends Controller
             'success' => true,
             'message' => 'Success',
         ], 200);
+    }
+
+    private function updateSchoolYearStudent($student)
+    {
+        $check = SchoolYearStudent::where('student_id',$student->id)
+            ->where('sy_from',$student->sy_from)
+            ->where('sy_to',$student->sy_to)
+            ->where('level',$student->level)
+            ->first();
+        if($check){
+            $update = SchoolYearStudent::find($check->id);
+        }else{
+            $update = new SchoolYearStudent();
+            $update->student_id = $student->id;
+            $update->sy_from = $student->sy_from;
+            $update->sy_to = $student->sy_to;
+            $update->level = $student->level;
+        }
+        $update->grade = $student->grade;
+        $update->section = $student->section;
+        $update->teacher_id = $student->teachers_id;
+        $update->save();
     }
 
 }
