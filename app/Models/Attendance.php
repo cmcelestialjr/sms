@@ -18,6 +18,7 @@ class Attendance extends Model
         'method',
         'status',
         'message',
+        'school_year_id',
         'sy_from',
         'sy_to',
         'level',
@@ -40,5 +41,10 @@ class Attendance extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teachers_id', 'id');
+    }
+
+    public function schoolYear(): BelongsTo
+    {
+        return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
     }
 }

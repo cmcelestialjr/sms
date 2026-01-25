@@ -14,12 +14,13 @@ return new class extends Migration
         Schema::create('school_year_students', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('student_id')->index();
+            $table->unsignedBigInteger('school_year_id')->index();
             $table->year('sy_from')->index();
             $table->year('sy_to');
             $table->string('level')->index(); // 'Kinder','Elementary','Junior High School','Senior High School'
             $table->string('grade')->index();
             $table->string('section')->index();
-            $table->string('teacher_id')->index();
+            $table->unsignedBigInteger('teacher_id')->index();
             $table->enum('status', ['Active', 'Inactive'])->index();
             $table->date('date_enrolled')->index()->nullable();
             $table->integer('is_transferred')->default(0)->index(); // 0 = No, 1 = Yes

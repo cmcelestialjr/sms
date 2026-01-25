@@ -26,6 +26,7 @@ class Student extends Model
         'birthdate',
         'address',
         'photo',
+        'school_year_id',
         'sy_from',
         'sy_to',
         'level',
@@ -38,6 +39,26 @@ class Student extends Model
         'user_id',
         'status'
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($student) {
+            if (!$student->student_id) {
+                $year = now()->year;
+
+                $last = self::where('student_id', 'LIKE', "$year%")
+                    ->lockForUpdate()
+                    ->orderByDesc('student_id')
+                    ->first();
+
+                $number = $last
+                    ? intval(substr($last->student_id, 4)) + 1
+                    : 1;
+
+                $student->student_id = $year .  str_pad($number, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
 
     public function attendances(): HasMany
     {
@@ -58,6 +79,10 @@ class Student extends Model
     public function absences()
     {
         return $this->hasMany(Absence::class, 'student_id', 'id');
+    }
+    public function schoolYear(): BelongsTo
+    {
+        return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
     }
 }
 

@@ -107,15 +107,14 @@ class UsersController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $request->validate([            
             'lastname' => 'required|string',
             'firstname' => 'required|string',
             'extname' => 'nullable|string',
             'middlename' => 'nullable|string',
             'username' => 'required|string|unique:users',
             'password' => 'required|string',
-            'role' => 'required|numeric|exists:users_roles,id',
-            
+            'role' => 'required|numeric|exists:users_roles,id',            
         ]);
 
         $user = Auth::user();
@@ -153,6 +152,7 @@ class UsersController extends Controller
             $teacher_id = $insert->id;
 
             $request->validate([
+                'id_no' => 'required|string|unique:teachers',
                 'status' => 'required|in:Active,Inactive',
                 'contact_no' => 'required|regex:/^09\d{9}$/',
                 'email' => 'nullable|email',
@@ -169,6 +169,7 @@ class UsersController extends Controller
             $sy_to = $getSchoolYear['sy_to'];            
             
             $insert = new Teacher();
+            $insert->id_no = $request->id_no ?? null;
             $insert->lastname = $request->lastname;
             $insert->firstname = $request->firstname;
             $insert->extname = $request->extname ?? null;
@@ -268,6 +269,7 @@ class UsersController extends Controller
             $teacher_id = $id;
 
             $request->validate([
+                'id_no' => 'required|string|unique:teachers',
                 'status' => 'required|in:Active,Inactive',
                 'contact_no' => 'required|regex:/^09\d{9}$/',
                 'email' => 'nullable|string',
@@ -293,6 +295,7 @@ class UsersController extends Controller
                 $insert = new Teacher();
             }
             
+            $insert->id_no = $request->id_no ?? null;
             $insert->lastname = $request->lastname;
             $insert->firstname = $request->firstname;
             $insert->extname = $request->extname ?? null;

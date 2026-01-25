@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('school_years', function (Blueprint $table) {
+        Schema::create('holidays', function (Blueprint $table) {
             $table->id();
-            $table->year('sy_from')->index();
-            $table->year('sy_to')->index();
-            $table->integer('school_term_id')->index();
+            $table->string('name')->index();
             $table->date('date_from')->index();
-            $table->date('date_to');
-            $table->date('enrollment_start')->nullable();
-            $table->date('enrollment_end')->nullable();
+            $table->date('date_to')->index();
+            $table->enum('type', ['Regular', 'Special'])->index();
+            $table->enum('repeat', ['Yes', 'No'])->index();
+            $table->enum('half_day', ['', 'am', 'pm'])->index();
+            $table->unsignedBigInteger('updated_by')->index()->nullable();
             $table->timestamps();
         });
     }
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('school_years');
+        Schema::dropIfExists('holidays');
     }
 };

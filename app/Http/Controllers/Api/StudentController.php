@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsNewStudentJob;
 use App\Models\Attendance;
+use App\Models\SchoolYear;
 use App\Models\SchoolYearStudent;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -105,13 +106,13 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        
+            
         $request->validate([
             'search_student_id' => 'nullable|integer|exists:students,id'
         ]);
 
         if($request->search_student_id){
-            
+                
             $studentInfo = $this->updateStudent($request, $request->search_student_id, 'store');
 
             return $studentInfo;
@@ -134,81 +135,97 @@ class StudentController extends Controller
             'status' => 'required|in:Active,Inactive'
         ]);
 
-        $student_id = $this->getStudentId();
+        DB::beginTransaction();
 
-        $validated['student_id'] = $student_id;
-        $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
-        $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
-        $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
-        $validated['extname'] = $request->extname=='null' ? null : $request->extname;
-        $validated['email'] = $request->email=='null' ? null : $request->email;
-        $validated['address'] = $request->address=='null' ? null : $request->address;
+        try {           
 
-        if ($request->hasFile('newPhoto')) {
-            $request->validate([
-                'newPhoto' => 'required|image',
-            ]);
-            $validated['photo'] = $request->file('newPhoto')->store('students', 'public');
-        }
+            // $student_id = $this->getStudentId();
 
-        if($user->role_id<3){
-            $request->validate([
-                'teachers_id' => 'required|integer|exists:users,id',
-            ]);
-            $teachers_id = $request->teachers_id;
+            // $validated['student_id'] = $student_id;
+            $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
+            $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
+            $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
+            $validated['extname'] = $request->extname=='null' ? null : $request->extname;
+            $validated['email'] = $request->email=='null' ? null : $request->email;
+            $validated['address'] = $request->address=='null' ? null : $request->address;
+
+            if ($request->hasFile('newPhoto')) {
+                $request->validate([
+                    'newPhoto' => 'required|image',
+                ]);
+                $validated['photo'] = $request->file('newPhoto')->store('students', 'public');
+            }
+
+            if($user->role_id<3){
+                $request->validate([
+                    'teachers_id' => 'required|integer|exists:users,id',
+                ]);
+                $teachers_id = $request->teachers_id;
+                $validated['teachers_id'] = $teachers_id;
+            }else{            
+                $teachers_id = $user->id;
+            }
+            
+            $teacher = Teacher::where('user_id',$teachers_id)->first();
+            if($teacher){
+                $level = $teacher->level;
+                $grade = $teacher->grade;
+                $section = $teacher->section;
+            }else{
+                $level = 'Elementary';
+                $grade = NULL;
+                $section = NULL;
+            }
+
+            $getSchoolYear = $this->schoolYearServices->getSchoolYear();
+            $validated['school_year_id'] = $getSchoolYear['school_year_id'];
+            $validated['sy_from'] = $getSchoolYear['sy_from'];
+            $validated['sy_to'] = $getSchoolYear['sy_to'];        
+
+            $validated['status'] = 'Active';
+            $validated['level'] = $level;
+            $validated['grade'] = $grade;
+            $validated['section'] = $section;
             $validated['teachers_id'] = $teachers_id;
-        }else{            
-            $teachers_id = $user->id;
+
+            $student = Student::create($validated);
+
+            $this->updateSchoolYearStudent($student, 'store');
+
+            $lastname = mb_strtoupper($student->lastname);
+            $firstname = mb_strtoupper($student->firstname);        
+
+            if (!empty($student->middlename)) {
+                $middleInitial = mb_strtoupper(mb_substr($student->middlename, 0, 1)) . ".";
+            }else{
+                $middleInitial = '';
+            }
+            if (!empty($student->extname)) {
+                $extname = mb_strtoupper($student->extname);
+            }else{
+                $extname = '';
+            }
+
+            $name = "$lastname, $firstname $extname $middleInitial";
+
+            $message = $name." is currently enrolled in Alangalang National School. Thank you.";
+            
+            $message = str_replace(" ","_",$message);
+
+            dispatch(new SendSmsNewStudentJob($student->contact_no, $message));
+
+            DB::commit();
+            return $student;
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Failed to save student record.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        $teacher = Teacher::where('user_id',$teachers_id)->first();
-        if($teacher){
-            $level = $teacher->level;
-            $grade = $teacher->grade;
-            $section = $teacher->section;
-        }else{
-            $level = 'Elementary';
-            $grade = NULL;
-            $section = NULL;
-        }
-
-        $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-        $validated['sy_from'] = $getSchoolYear['sy_from'];
-        $validated['sy_to'] = $getSchoolYear['sy_to'];        
-
-        $validated['status'] = 'Active';
-        $validated['level'] = $level;
-        $validated['grade'] = $grade;
-        $validated['section'] = $section;
-        $validated['teachers_id'] = $teachers_id;
-
-        $student = Student::create($validated);
-
-        $this->updateSchoolYearStudent($student, 'store');
-
-        $lastname = mb_strtoupper($student->lastname);
-        $firstname = mb_strtoupper($student->firstname);        
-
-        if (!empty($student->middlename)) {
-            $middleInitial = mb_strtoupper(mb_substr($student->middlename, 0, 1)) . ".";
-        }else{
-            $middleInitial = '';
-        }
-        if (!empty($student->extname)) {
-            $extname = mb_strtoupper($student->extname);
-        }else{
-            $extname = '';
-        }
-
-        $name = "$lastname, $firstname $extname $middleInitial";
-
-        $message = $name." is currently enrolled in Alangalang National School. Thank you.";
-        
-        $message = str_replace(" ","_",$message);
-
-        dispatch(new SendSmsNewStudentJob($student->contact_no, $message));
-
-        return $student;
     }
 
     public function update(Request $request, $id)
@@ -387,6 +404,8 @@ class StudentController extends Controller
             return response()->json(['message' => 'Error! Student already have attendace.']);
         }
 
+        SchoolYearStudent::where('student_id',$id)->delete();
+
         $student->delete();
         return response()->json(['message' => 'Deleted']);
     }
@@ -399,7 +418,7 @@ class StudentController extends Controller
 
         $number = $query && preg_match('/\d{4}-(\d+)/', $query->student_id, $matches) ? intval($matches[1]) + 1 : 1;
 
-        $student_id = "$year-" . str_pad($number, 5, '0', STR_PAD_LEFT);
+        $student_id = "$year" . str_pad($number, 5, '0', STR_PAD_LEFT);
 
         return $student_id;
     }
@@ -407,6 +426,7 @@ class StudentController extends Controller
     private function updateSchoolYearStudent($student, $from)
     {
         $check = SchoolYearStudent::where('student_id',$student->id)
+            ->where('school_year_id',$student->school_year_id)
             ->where('sy_from',$student->sy_from)
             ->where('sy_to',$student->sy_to)
             ->where('level',$student->level)
@@ -416,6 +436,7 @@ class StudentController extends Controller
         }else{
             $update = new SchoolYearStudent();
             $update->student_id = $student->id;
+            $update->school_year_id = $student->school_year_id;
             $update->sy_from = $student->sy_from;
             $update->sy_to = $student->sy_to;
             $update->level = $student->level;

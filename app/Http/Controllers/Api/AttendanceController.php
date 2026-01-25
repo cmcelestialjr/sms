@@ -260,6 +260,7 @@ class AttendanceController extends Controller
             'status' => $status,
             'message' => $message,
             'scanned_at' => $scanned_at,
+            'school_year_id' => $student->school_year_id,
             'sy_from' => $student->sy_from,
             'sy_to' => $student->sy_to,
             'level' => $student->level,
@@ -358,10 +359,12 @@ class AttendanceController extends Controller
     private function updateStudent($student)
     {
         $getSchoolYear = $this->schoolYearServices->getSchoolYear();
+        $school_year_id = $getSchoolYear['school_year_id'];
         $sy_from = $getSchoolYear['sy_from'];
         $sy_to = $getSchoolYear['sy_to'];
 
         $student = Student::find($student->id);
+        $student->school_year_id = $school_year_id;
         $student->sy_from = $sy_from;
         $student->sy_to = $sy_to;
         $student->status = 'Active';
@@ -372,6 +375,7 @@ class AttendanceController extends Controller
 
         if($teacher!=null){
             $teacher = Teacher::find($teacher->id);
+            $teacher->school_year_id = $school_year_id;
             $teacher->sy_from = $sy_from;
             $teacher->sy_to = $sy_to;
             $teacher->save();
@@ -483,6 +487,8 @@ class AttendanceController extends Controller
         if($actual_pm_out != ''){
             $insertSummary->actual_pm_out = $actual_pm_out;
         }
+
+        $insertSummary->school_year_id = $student->school_year_id;
         $insertSummary->sy_from = $student->sy_from;
         $insertSummary->sy_to = $student->sy_to;
         $insertSummary->level = $student->level;

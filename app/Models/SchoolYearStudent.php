@@ -12,6 +12,7 @@ class SchoolYearStudent extends Model
 
     protected $fillable = [
         'student_id',
+        'school_year_id',
         'sy_from',
         'sy_to',
         'level',
@@ -24,5 +25,10 @@ class SchoolYearStudent extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class, 'teacher_id', 'user_id');
+    }
+    
+    public function schoolYear(): BelongsTo
+    {
+        return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
     }
 }

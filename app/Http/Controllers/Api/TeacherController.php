@@ -23,6 +23,7 @@ class TeacherController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'id_no' => 'required|string|max:255|unique:users,id_no',
             'lastname' => 'required|string|max:255',
             'firstname' => 'required|string|max:255',
             'middlename' => 'nullable|string|max:255',
@@ -41,21 +42,37 @@ class TeacherController extends Controller
             'email' => 'nullable|email',
             'address' => 'nullable|string',
         ]);
+
+        DB::beginTransaction();
+
+        try{ 
+            
+            $getSchoolYear = $this->schoolYearServices->getSchoolYear();
+            $validated['school_year_id'] = $getSchoolYear['school_year_id'];
+            $validated['sy_from'] = $getSchoolYear['sy_from'];
+            $validated['sy_to'] = $getSchoolYear['sy_to'];
+
+            if ($request->hasFile('newPhoto')) {
+                $request->validate([
+                    'newPhoto' => 'required|image',
+                ]);
+                $validated['photo'] = $request->file('newPhoto')->store('teachers', 'public');
+            }
+
+            $teacher = Teacher::create($validated);
+
+            DB::commit();
+
+            return response()->json($teacher, 201);
         
-        $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-        $validated['sy_from'] = $getSchoolYear['sy_from'];
-        $validated['sy_to'] = $getSchoolYear['sy_to'];
-
-        if ($request->hasFile('newPhoto')) {
-            $request->validate([
-                'newPhoto' => 'required|image',
-            ]);
-            $validated['photo'] = $request->file('newPhoto')->store('teachers', 'public');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating teacher.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $teacher = Teacher::create($validated);
-
-        return response()->json($teacher, 201);
     }
 
     public function update(Request $request, $id)
@@ -79,15 +96,31 @@ class TeacherController extends Controller
             'status' => 'required|in:Active,Inactive'
         ]);
 
-        if($validated['status']=='Active'){
-            $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-            $validated['sy_from'] = $getSchoolYear['sy_from'];
-            $validated['sy_to'] = $getSchoolYear['sy_to'];
+        DB::beginTransaction();
+
+        try{    
+
+            if($validated['status']=='Active'){
+                $getSchoolYear = $this->schoolYearServices->getSchoolYear();
+                $validated['school_year_id'] = $getSchoolYear['school_year_id'];
+                $validated['sy_from'] = $getSchoolYear['sy_from'];
+                $validated['sy_to'] = $getSchoolYear['sy_to'];
+            }
+
+            $teacher->update($validated);
+
+            DB::commit();
+
+            return response()->json($teacher);
+        
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating teacher.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $teacher->update($validated);
-
-        return response()->json($teacher);
     }
 
     public function statusTotal(Request $request)
@@ -138,11 +171,13 @@ class TeacherController extends Controller
         $teacher = Teacher::where('user_id',$validated['id'])->first();
 
         $getSchoolYear = $this->schoolYearServices->getSchoolYear();
+        $school_year_id = $getSchoolYear['school_year_id'];
         $sy_from = $getSchoolYear['sy_from'];
         $sy_to = $getSchoolYear['sy_to'];
 
-        $students = Student::whereIn('id', $validatedStudents)
+        Student::whereIn('id', $validatedStudents)
             ->update(['teachers_id' => $validated['id'],
+                'school_year_id' => $school_year_id,
                 'sy_from' => $sy_from,
                 'sy_to' => $sy_to,
                 'level' => $teacher->level,
@@ -169,6 +204,7 @@ class TeacherController extends Controller
         }else{
             $update = new SchoolYearStudent();
             $update->student_id = $student->id;
+            $update->school_year_id = $student->school_year_id;
             $update->sy_from = $student->sy_from;
             $update->sy_to = $student->sy_to;
             $update->level = $student->level;

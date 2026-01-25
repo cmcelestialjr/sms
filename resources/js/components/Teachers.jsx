@@ -32,6 +32,7 @@ const Teachers = () => {
     const [searchTeacherId, setSearchTeacherId] = useState("");
     const [showTeacherForTranser, setShowTeacherForTranser] = useState(false);
     const [form, setForm] = useState({
+        id_no: '',
         lastname: '',
         firstname: '',
         middlename: '',
@@ -180,6 +181,7 @@ const Teachers = () => {
     const handleAdd = () => {
         setEditingTeacher(null);
         setForm({
+            id_no: '',
             lastname: '',
             firstname: '',
             middlename: '',
@@ -202,6 +204,7 @@ const Teachers = () => {
         setEditingTeacher(teacher);
 
         setForm({
+            id_no: teacher.id_no || '',
             lastname: teacher.lastname || '',
             firstname: teacher.firstname || '',
             middlename: teacher.middlename || '',
@@ -384,7 +387,7 @@ const Teachers = () => {
                             <tbody>
                                 {teachers?.map((teacher) => (
                                     <tr key={teacher.id} className="border-t">
-                                        <td className="border border-gray-300 px-4 py-2 text-center">{teacher.id}</td>
+                                        <td className="border border-gray-300 px-4 py-2 text-center">{teacher.id_no}</td>
                                         <td className="border border-gray-300 px-4 py-2">
                                             <div className="flex justify-center">
                                                 <div className="w-14 h-14 rounded-full overflow-hidden border border-gray-300 shadow-sm">
@@ -496,6 +499,19 @@ const Teachers = () => {
 
                             <div className="space-y-3">
                                 <div className="grid grid-cols-3 sm:grid-cols-2 gap-4">
+                                {/* ID No */}
+                                <div className="grid grid-cols-1">
+                                    <label htmlFor="id_no" className="text-sm font-medium text-gray-700">ID No</label>
+                                    <input 
+                                        id="id_no"
+                                        name="id_no"
+                                        value={form.id_no}
+                                        onChange={handleFormChange}
+                                        placeholder="Enter ID No"
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
                                 {/* Last Name */}
                                 <div className="grid grid-cols-1">
                                     <label htmlFor="lastname" className="text-sm font-medium text-gray-700">Last Name</label>

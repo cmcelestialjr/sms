@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('school_infos', function (Blueprint $table) {
+        Schema::create('holiday_dates', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->string('school_id')->unique()->index()->nullable();
-            $table->string('school_head')->nullable();
-            $table->string('principal')->nullable();
+            $table->integer('holiday_id')->index();
+            $table->date('date')->index();
+            $table->unsignedBigInteger('updated_by')->index()->nullable();
             $table->timestamps();
         });
     }
@@ -26,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('school_infos');
+        Schema::dropIfExists('holiday_dates');
     }
 };

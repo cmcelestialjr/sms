@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('students', function (Blueprint $table) {
             $table->id();
-            $table->string('student_id')->unique();
-            $table->string('lrn_no')->unique();
+            $table->string('student_id')->unique()->index();
+            $table->string('lrn_no')->unique()->index();
             $table->string('lastname');
             $table->string('firstname');
             $table->string('middlename')->nullable();

@@ -39,4 +39,9 @@ class AttendanceDailySummary extends Model
         return $this->belongsTo(User::class, 'teachers_id', 'id');
     }
 
+    public function schoolYear(): BelongsTo
+    {
+        return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
+    }
+
 }
