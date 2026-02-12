@@ -10,6 +10,10 @@ Route::get('/{any?}', function () {
     return view('app');
 })->where('any', '.*');
 
+Route::get('/attendance/rfid/{any?}', function () {
+    return view('app');
+})->where('any', '.*');
+
 Route::get('/attendance/qr/{any?}', function () {
     return view('app');
 })->where('any', '.*');

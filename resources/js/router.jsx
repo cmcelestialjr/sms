@@ -41,7 +41,7 @@ function RouterApp() {
           element={<AttendanceStationListQr />}
         />
 
-        <Route path="/attendance/:id" 
+        <Route path="/attendance/rfid/:id" 
           element={<AttendanceScanner />}
         />
 
