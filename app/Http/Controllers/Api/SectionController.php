@@ -11,8 +11,10 @@ class SectionController extends Controller
 {
     public function index()
     {
-        $sections = Teacher::distinct()->pluck('section');
-        
+        $sections = Teacher::select('section')
+                    ->distinct()
+                    ->orderBy('section', 'ASC')
+                    ->pluck('section');
         return response()->json($sections);
     }
 }

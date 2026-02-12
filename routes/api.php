@@ -37,6 +37,7 @@ Route::get('/stations/{id}', [StationController::class, 'show']);
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/attendances/lists', [AttendanceController::class, 'lists']);
     Route::get('/attendances', [AttendanceController::class, 'index']);
+    Route::put('/attendances/daily', [AttendanceController::class, 'updateDaily']);
 
     Route::get('/absences/index', [AbsenceController::class, 'index']);
 
@@ -70,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/messages/resend', [MessageController::class, 'resend']);
 
     Route::get('/schoolYears', [SchoolYearController::class, 'index']);
+    Route::get('/schoolYears/lists', [SchoolYearController::class, 'lists']);
     Route::post('/schoolYears', [SchoolYearController::class, 'store']);
     Route::put('/schoolYears/{id}', [SchoolYearController::class, 'update']);
 

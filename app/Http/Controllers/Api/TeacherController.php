@@ -137,6 +137,11 @@ class TeacherController extends Controller
             });
         }
 
+        if($request->has('schoolYear') && !empty($request->schoolYear)) {
+            $schoolYear = $request->schoolYear;
+            $totals->where('school_year_id', $schoolYear);
+        }
+
         $totals = $totals->groupBy('status')
                 ->get();
 
@@ -170,16 +175,11 @@ class TeacherController extends Controller
 
         $teacher = Teacher::where('user_id',$validated['id'])->first();
 
-        $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-        $school_year_id = $getSchoolYear['school_year_id'];
-        $sy_from = $getSchoolYear['sy_from'];
-        $sy_to = $getSchoolYear['sy_to'];
-
         Student::whereIn('id', $validatedStudents)
             ->update(['teachers_id' => $validated['id'],
-                'school_year_id' => $school_year_id,
-                'sy_from' => $sy_from,
-                'sy_to' => $sy_to,
+                'school_year_id' => $teacher->school_year_id,
+                'sy_from' => $teacher->sy_from,
+                'sy_to' => $teacher->sy_to,
                 'level' => $teacher->level,
                 'grade' => $teacher->grade,
                 'section' => $teacher->section,

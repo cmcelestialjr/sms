@@ -27,6 +27,8 @@ class AttendanceDailySummary extends Model
         'is_late', //0 = no, 1 = yes
         'is_undertime', //0 = no, 1 = yes
         'is_excused', //0 = no, 1 = yes
+        'is_absent', //null = present, 1 = absent
+        'remarks',
     ];
 
     public function student(): BelongsTo

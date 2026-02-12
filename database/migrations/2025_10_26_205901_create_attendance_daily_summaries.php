@@ -29,6 +29,8 @@ return new class extends Migration
             $table->integer('is_late')->index(); //0 = no, 1 = yes
             $table->integer('is_undertime')->index(); //0 = no, 1 = yes
             $table->integer('is_excused')->index(); //0 = no, 1 = yes
+            $table->integer('is_absent')->nullable()->index(); //null = present, 1 = absent
+            $table->string('remarks')->nullable();
             $table->timestamps();
         });
     }

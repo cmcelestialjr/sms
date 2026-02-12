@@ -31,6 +31,8 @@ const Teachers = () => {
     const [searchTeacherTerm, setSearchTeacherTerm] = useState("");
     const [searchTeacherId, setSearchTeacherId] = useState("");
     const [showTeacherForTranser, setShowTeacherForTranser] = useState(false);
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
     const [form, setForm] = useState({
         id_no: '',
         lastname: '',
@@ -58,11 +60,15 @@ const Teachers = () => {
 
     useEffect(() => {
         fetchTeachers(selectedStatus);
-    }, [page, search, selectedStatus]);
+    }, [page, search, selectedStatus, selectedSchoolYear]);
 
     useEffect(() => {
         fetchStatusTotal();
-    }, [search]);
+    }, [search, selectedSchoolYear]);
+
+    useEffect(() => {
+        fetchSchoolYears()
+    }, []);
 
     useEffect(() => {
         if (searchTeacherTerm.length < 1) return;
@@ -70,7 +76,7 @@ const Teachers = () => {
             try {
                 const authToken = localStorage.getItem("token");
                 const response = await axios.get('/api/teachers/search', {
-                    params: { search : searchTeacherTerm },
+                    params: { search : searchTeacherTerm, schoolYear: selectedSchoolYear },
                     headers: { Authorization: `Bearer ${authToken}` },
                 });
                 setTeacherSuggestions(response.data);
@@ -96,7 +102,7 @@ const Teachers = () => {
         try {
             const authToken = localStorage.getItem("token");
             const response = await axios.get('/api/teachers', {
-                params: { page, search, status },
+                params: { page, search, status, schoolYear: selectedSchoolYear },
                 headers: { Authorization: `Bearer ${authToken}` },
             });
             setTeachers(response.data.data);
@@ -108,12 +114,26 @@ const Teachers = () => {
         }
     };
 
+    const fetchSchoolYears = async () => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const response = await axios.get('/api/schoolYears/lists', {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            setSchoolYears(response.data.data);
+        } catch (error) {
+            toastr.error('Failed to load school years');
+            setSchoolYears([]);
+        }
+    };
+
     const fetchStatusTotal = async () => {
         try {
             const authToken = localStorage.getItem("token");
             const response = await axios.get(`/api/teachers/status-total`, {
                 params: {
                     search: search,
+                    schoolYear: selectedSchoolYear
                 },
                 headers: { Authorization: `Bearer ${authToken}` },
             });
@@ -196,6 +216,7 @@ const Teachers = () => {
             address: '',
             position: '',
             sex: 'Male',
+            school_year_id: schoolYears[0]?.id || "",
         });
         setShowTeacherModal(true);
     };
@@ -204,7 +225,7 @@ const Teachers = () => {
         setEditingTeacher(teacher);
 
         setForm({
-            id_no: teacher.id_no || '',
+            id_no: teacher.teacher?.id_no || '',
             lastname: teacher.lastname || '',
             firstname: teacher.firstname || '',
             middlename: teacher.middlename || '',
@@ -219,6 +240,7 @@ const Teachers = () => {
             address: teacher.teacher?.address || '',
             position: teacher.teacher?.position || '',
             sex: teacher.teacher?.sex || 'Male',
+            school_year_id: teacher.teacher?.school_year_id || (schoolYears.length > 0 ? schoolYears[0]?.id : ""),
         });
         setShowTeacherModal(true);
     };
@@ -320,6 +342,15 @@ const Teachers = () => {
         }
     };
 
+    const handleContactChange = (e) => {
+        const value = e.target.value;
+
+        // Only allow digits, up to 11 characters and make sure it starts with "09"
+        if (/^\d{0,11}$/.test(value)) {
+            setForm({ ...form, contact_no: value });
+        }
+    };
+
     return (
         <Layout>
             <div className="border border-gray-300 shadow-xl rounded-lg p-6 bg-white mx-auto w-full mt-10">
@@ -359,7 +390,7 @@ const Teachers = () => {
                 
                 <div>
                     {/* Search Input */}
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4">
                         <input
                             type="text"
                             placeholder="Search teachers..."
@@ -367,6 +398,18 @@ const Teachers = () => {
                             onChange={handleSearch}
                             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <select 
+                            value={selectedSchoolYear}
+                            onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All School Year</option>
+                            {schoolYears.map((sy) => (
+                                <option key={sy.id} value={sy.id}>
+                                    S.Y. {sy.sy_from}-{sy.sy_to}
+                                </option>
+                            ))}
+                        </select>
                     </div>                    
 
                     {/* Table */}
@@ -387,7 +430,7 @@ const Teachers = () => {
                             <tbody>
                                 {teachers?.map((teacher) => (
                                     <tr key={teacher.id} className="border-t">
-                                        <td className="border border-gray-300 px-4 py-2 text-center">{teacher.id_no}</td>
+                                        <td className="border border-gray-300 px-4 py-2 text-center">{teacher.teacher?.id_no}</td>
                                         <td className="border border-gray-300 px-4 py-2">
                                             <div className="flex justify-center">
                                                 <div className="w-14 h-14 rounded-full overflow-hidden border border-gray-300 shadow-sm">
@@ -572,13 +615,7 @@ const Teachers = () => {
                                         name="contact_no"
                                         placeholder="Enter Contact No."
                                         value={form.contact_no}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            // Only allow digits, up to 11 characters
-                                            if (/^\d{0,11}$/.test(value)) {
-                                                setForm({ ...form, contact_no: value });
-                                            }
-                                        }}
+                                        onChange={handleContactChange}
                                         maxLength={11}
                                         className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                         required
@@ -646,20 +683,37 @@ const Teachers = () => {
                                 </div>
 
                                 {/* Level */}
-                                <div className="grid grid-cols-1">
-                                    <label htmlFor="level" className="text-sm font-medium text-gray-700">Level</label>
-                                    <select 
-                                        id="level"
-                                        name="level"
-                                        value={form.level}
-                                        onChange={handleFormChange}
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                    >
-                                        <option value="Kinder">Kinder</option>
-                                        <option value="Elementary">Elementary</option>
-                                        <option value="Junior High School">Junior High School</option>
-                                        <option value="Senior High School">Senior High School</option>
-                                    </select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="schoolYear" className="text-sm font-medium text-gray-700">School Year</label>
+                                        <select
+                                            id="schoolYear"
+                                            value={form.school_year_id}
+                                            onChange={e => setForm({...form, school_year_id: Number(e.target.value)})}
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            {schoolYears.map((sy) => (
+                                                <option key={sy.id} value={sy.id}>
+                                                    S.Y. {sy.sy_from}-{sy.sy_to}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="level" className="text-sm font-medium text-gray-700">Level</label>
+                                        <select 
+                                            id="level"
+                                            name="level"
+                                            value={form.level}
+                                            onChange={handleFormChange}
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            <option value="Kinder">Kinder</option>
+                                            <option value="Elementary">Elementary</option>
+                                            <option value="Junior High School">Junior High School</option>
+                                            <option value="Senior High School">Senior High School</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {/* Grade */}

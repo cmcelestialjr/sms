@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SchoolYear;
 use App\Models\SchoolYearStudent;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -65,7 +66,16 @@ class UsersController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                ->orWhere('username', 'LIKE', "%{$search}%");
+                    ->orWhere('username', 'LIKE', "%{$search}%")
+                    ->orWhereHas('teacher', function ($q) use ($search) {
+                        $q->where(function ($q2) use ($search) {
+                            $q2->where('lastname', 'LIKE', "%{$search}%")
+                            ->orWhere('firstname', 'LIKE', "%{$search}%")
+                            ->orWhere('middlename', 'LIKE', "%{$search}%")
+                            ->orWhere('grade', 'LIKE', "%{$search}%")
+                            ->orWhere('section', 'LIKE', "%{$search}%");
+                        });
+                    });
             });
         }
 
@@ -74,7 +84,14 @@ class UsersController extends Controller
             $query->whereHas('teacher', function ($q) use ($status) {
                 $q->where('status', $status);
             });
-        }        
+        }
+
+        if($request->has('schoolYear') && !empty($request->schoolYear)) {
+            $schoolYear = $request->schoolYear;
+            $query->whereHas('teacher', function ($q) use ($schoolYear) {
+                $q->where('school_year_id', $schoolYear);
+            });
+        }
 
         $users = $query->paginate(10);
 
@@ -98,11 +115,24 @@ class UsersController extends Controller
     {
         $query = $request->get('search');
 
-        return Teacher::where('lastname', 'like', "%{$query}%")
-            ->orWhere('firstname', 'like', "%{$query}%")
-            ->orWhere('middlename', 'like', "%{$query}%")
-            ->limit(10)
+        $teachers = User::with('teacher')
+            ->where('name', 'LIKE', "%{$query}%")
+            ->orWhereHas('teacher', function ($q) use ($query) {
+                $q->where(function ($q2) use ($query) {
+                    $q2->where('lastname', 'LIKE', "%{$query}%")
+                    ->orWhere('firstname', 'LIKE', "%{$query}%")
+                    ->orWhere('middlename', 'LIKE', "%{$query}%");
+                });
+            });
+        // if($request->has('schoolYear') && !empty($request->schoolYear)) {
+        //     $schoolYear = $request->schoolYear;
+        //     $teachers->where('school_year_id', $schoolYear);
+        // }
+
+        $teachers = $teachers->limit(10)
             ->get();
+
+        return $teachers;
     }
 
     public function store(Request $request)
@@ -162,11 +192,14 @@ class UsersController extends Controller
                 'level' => 'required|in:Kinder,Elementary,Junior High School,Senior High School',
                 'grade' => 'required',
                 'section' => 'required',
+                'school_year_id' => 'required|integer|exists:school_years,id',
             ]);
 
-            $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-            $sy_from = $getSchoolYear['sy_from'];
-            $sy_to = $getSchoolYear['sy_to'];            
+            $school_year_id = $request->school_year_id;
+
+            $getSchoolYear = SchoolYear::find($school_year_id);
+            $sy_from = $getSchoolYear->sy_from;
+            $sy_to = $getSchoolYear->sy_to;        
             
             $insert = new Teacher();
             $insert->id_no = $request->id_no ?? null;
@@ -179,12 +212,13 @@ class UsersController extends Controller
             $insert->address = $request->address ?? null;
             $insert->sex = $request->sex;
             $insert->position = $request->position ?? null;
-            $insert->photo = $photo;
+            $insert->photo = $photo == 'null' ? null : $photo;
+            $insert->school_year_id = $school_year_id;
             $insert->sy_from = $sy_from;
             $insert->sy_to = $sy_to;
             $insert->level = $request->level;
             $insert->grade = $request->grade;
-            $insert->section = $request->section;
+            $insert->section = $request->section;            
             $insert->user_id = $teacher_id;
             $insert->save();
         }
@@ -269,7 +303,7 @@ class UsersController extends Controller
             $teacher_id = $id;
 
             $request->validate([
-                'id_no' => 'required|string|unique:teachers',
+                'id_no' => 'required|string|unique:teachers,id_no,'.$teacher_id.',user_id',
                 'status' => 'required|in:Active,Inactive',
                 'contact_no' => 'required|regex:/^09\d{9}$/',
                 'email' => 'nullable|string',
@@ -279,13 +313,14 @@ class UsersController extends Controller
                 'level' => 'required|in:Kinder,Elementary,Junior High School,Senior High School',
                 'grade' => 'required',
                 'section' => 'required',
+                'school_year_id' => 'required|integer|exists:school_years,id',
             ]);
 
-            if($request->status=='Active'){
-                $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-                $sy_from = $getSchoolYear['sy_from'];
-                $sy_to = $getSchoolYear['sy_to'];
-            }
+            $school_year_id = $request->school_year_id;
+
+            $getSchoolYear = SchoolYear::find($school_year_id);
+            $sy_from = $getSchoolYear->sy_from;
+            $sy_to = $getSchoolYear->sy_to;
 
             $check = Teacher::where('user_id',$teacher_id)->first();
 
@@ -306,13 +341,12 @@ class UsersController extends Controller
             $insert->photo = $photo;
             $insert->sex = $request->sex;
             $insert->position = $request->position ?? null;
-            if($request->status=='Active'){
-                $insert->sy_from = $sy_from;
-                $insert->sy_to = $sy_to;       
-            }     
+            $insert->sy_from = $sy_from;
+            $insert->sy_to = $sy_to; 
             $insert->level = $request->level;
             $insert->grade = $request->grade;
             $insert->section = $request->section;
+            $insert->school_year_id = $request->school_year_id;
             $insert->user_id = $teacher_id;
             $insert->status = $request->status;
             $insert->save();
@@ -321,22 +355,24 @@ class UsersController extends Controller
                 Student::where('teachers_id',$teacher_id)
                     ->where('status','Active')
                     ->update([
-                    'sy_from' => $sy_from,
-                    'sy_to' => $sy_to,
-                    'level' => $request->level,
-                    'grade' => $request->grade,
-                    'section' => $request->section,
-                ]);
+                        'school_year_id' => $school_year_id,
+                        'sy_from' => $sy_from,
+                        'sy_to' => $sy_to,
+                        'level' => $request->level,
+                        'grade' => $request->grade,
+                        'section' => $request->section,
+                    ]);
 
                 SchoolYearStudent::where('teacher_id',$teacher_id)
                     ->where('status','Active')
                     ->update([
-                    'sy_from' => $sy_from,
-                    'sy_to' => $sy_to,
-                    'level' => $request->level,
-                    'grade' => $request->grade,
-                    'section' => $request->section,
-                ]);
+                        'school_year_id' => $school_year_id,
+                        'sy_from' => $sy_from,
+                        'sy_to' => $sy_to,
+                        'level' => $request->level,
+                        'grade' => $request->grade,
+                        'section' => $request->section,
+                    ]);
             }
         }
 

@@ -13,6 +13,8 @@ const AttendanceLists = () => {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [attendaces, setAttendances] = useState([]);
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
     const [type, setType] = useState("");
     const [duration, setDuration] = useState([
         new Date(),
@@ -29,8 +31,15 @@ const AttendanceLists = () => {
     }, []);
 
     useEffect(() => {
-        fetchAttendances();
-    }, [page, search, type, startDate, endDate]);
+        const timer = setTimeout(() => {
+            fetchAttendances();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search, type, selectedSchoolYear, startDate, endDate]);
+
+    useEffect(() => {
+        fetchSchoolYears()
+    }, []);
 
     const handleSearch = (e) => {
         setSearch(e.target.value);
@@ -44,6 +53,7 @@ const AttendanceLists = () => {
                 params: { 
                     page: page, 
                     search: search, 
+                    schoolYear: selectedSchoolYear,
                     type: type,
                     startDate: startDate, 
                     endDate: endDate
@@ -56,6 +66,21 @@ const AttendanceLists = () => {
             // toastr.error('Failed to load students');
         } finally {
 
+        }
+    };
+
+    const fetchSchoolYears = async () => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const response = await axios.get('/api/schoolYears/lists', {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            setSchoolYears(response.data.data);
+            setSelectedSchoolYear(response.data.data[0]?.id || "");
+        } catch (error) {
+            toastr.error('Failed to load school years');
+            setSchoolYears([]);
+            setSelectedSchoolYear("");
         }
     };
 
@@ -89,7 +114,7 @@ const AttendanceLists = () => {
                 
                 <div>
                     {/* Search Input */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <input
                             type="text"
                             placeholder="Search attendances..."
@@ -97,6 +122,19 @@ const AttendanceLists = () => {
                             onChange={handleSearch}
                             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+
+                        <select 
+                            value={selectedSchoolYear}
+                            onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {schoolYears.map((sy) => (
+                                <option key={sy.id} value={sy.id}>
+                                    S.Y. {sy.sy_from}-{sy.sy_to}
+                                </option>
+                            ))}
+                        </select>
+
                         {/* Single Calendar for Date Duration */}
                         <DatePicker
                             selected={startDate}

@@ -5,6 +5,8 @@ const UserModal = ({
     userModal,
     handleUserModalClose,
     handleUserSubmit,
+    idNo,
+    setIdNo,
     setLastnameOfUser,
     setFirstnameOfUser,
     setExtnameOfUser,
@@ -43,7 +45,10 @@ const UserModal = ({
     contactNo,
     address,
     position,
-    sex
+    sex,
+    schoolYears,
+    schoolYearId,
+    setSchoolYearId,    
 }) => {
 
     const handleImageChange = (e) => {
@@ -92,7 +97,7 @@ const UserModal = ({
             </div>
 
             <div className="mt-4 space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-1 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-6">
                 {/* Lastname */}
                 <div className="flex flex-col">
                     <label htmlFor="lastname" className="text-sm font-medium text-gray-700">Lastname</label>
@@ -173,19 +178,19 @@ const UserModal = ({
                     {passwordOfUser === '************' && (
                     <div className="mt-2">
                         <label className="inline-flex items-center">
-                        <input
-                            type="checkbox"
-                            checked={isEditingPassword}
-                            onChange={(e) => {
-                            const checked = e.target.checked;
-                            setIsEditingPassword(checked);
-                            if (checked) {
-                                setPasswordOfUser(''); // clear password so user can type a new one
-                            }
-                            }}
-                            className="mr-2"
-                        />
-                        <span className="text-sm text-gray-700">Edit Password?</span>
+                            <input
+                                type="checkbox"
+                                checked={isEditingPassword}
+                                onChange={(e) => {
+                                const checked = e.target.checked;
+                                setIsEditingPassword(checked);
+                                    if (checked) {
+                                        setPasswordOfUser('');
+                                    }
+                                }}
+                                className="mr-2"
+                            />
+                            <span className="text-sm text-gray-700">Edit Password?</span>
                         </label>
                     </div>
                     )}
@@ -195,10 +200,10 @@ const UserModal = ({
                 <div className="flex flex-col">
                     <label htmlFor="role" className="text-sm font-medium text-gray-700">Role</label>
                     <select
-                    id="role"
-                    value={roleOfUser}
-                    onChange={(e) => setRoleOfUser(e.target.value)}
-                    className="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+                        id="role"
+                        value={roleOfUser}
+                        onChange={(e) => setRoleOfUser(e.target.value)}
+                        className="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
                     >
                     {roles.map((role) => (
                         <option key={role.id} value={role.id}>{role.name}</option>
@@ -209,6 +214,18 @@ const UserModal = ({
                 {/* Level, Grade, Section - Conditional rendering for a specific role */}
                 {(roleOfUser === 3 || roleOfUser === '3') && (
                     <>
+                    {/* ID NO */}
+                    <div className="flex flex-col">
+                        <label className="text-sm font-medium text-gray-700 mb-1">ID No.</label>
+                        <input
+                            type="text"
+                            name="id_no"
+                            value={idNo}
+                            onChange={(e) => setIdNo(e.target.value)}
+                            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        />
+                    </div>
+
                     {/* Contact No */}
                     <div className="flex flex-col">
                         <label className="text-sm font-medium text-gray-700 mb-1">Contact No.</label>
@@ -235,7 +252,7 @@ const UserModal = ({
                                                 Contact number must start with "09" and be exactly 11 digits.
                                 </span>
                             )}
-                        </div>
+                    </div>
 
                     {/* Email */}
                     <div className="flex flex-col">
@@ -289,18 +306,35 @@ const UserModal = ({
                             className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
                     </div>
+
+                    <div className="flex flex-col">
+                        <label htmlFor="level" className="text-sm font-medium text-gray-700">School Year</label>
+                        <select
+                            id="schoolYear"
+                            value={schoolYearId}
+                            onChange={(e) => setSchoolYearId(e.target.value)}
+                            className="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+                        >
+                            {schoolYears.map((sy) => (
+                                <option key={sy.id} value={sy.id}>
+                                    S.Y. {sy.sy_from}-{sy.sy_to}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    
                     <div className="flex flex-col">
                         <label htmlFor="level" className="text-sm font-medium text-gray-700">Level</label>
                         <select
-                        id="level"
-                        value={levelOfUser}
-                        onChange={(e) => setLevelOfUser(e.target.value)}
-                        className="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+                            id="level"
+                            value={levelOfUser}
+                            onChange={(e) => setLevelOfUser(e.target.value)}
+                            className="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
                         >
-                        <option value="Kinder">Kinder</option>
-                        <option value="Elementary">Elementary</option>
-                        <option value="Junior High School">Junior High School</option>
-                        <option value="Senior High School">Senior High School</option>
+                            <option value="Kinder">Kinder</option>
+                            <option value="Elementary">Elementary</option>
+                            <option value="Junior High School">Junior High School</option>
+                            <option value="Senior High School">Senior High School</option>
                         </select>
                     </div>
 

@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Jobs\AbsencesJob;
 use App\Jobs\SendSmsAttendanceJob;
 use App\Jobs\SendSmsAttendanceJob1;
+use App\Models\Absence;
 use App\Models\Attendance;
 use App\Models\AttendanceDailySummary;
 use App\Models\DeviceSequence;
 use App\Models\SchoolInfo;
+use App\Models\SchoolYear;
 use App\Models\Student;
 use App\Models\Station;
 use App\Models\Teacher;
@@ -18,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
@@ -31,25 +34,29 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $validated = $request->validate([
+            'schoolYear' => 'required|numeric|exists:school_years,id',
             'year' => 'required|numeric',
             'month' => 'required|numeric',
             'search' => 'nullable|string',
         ]);
 
+        $schoolYear = $validated['schoolYear'];
         $year = $validated['year'];
         $month = $validated['month'];
         $search = $validated['search'];
         
-        $query = Student::with(['attendances' => function ($query) use ($year, $month) 
+        $query = Student::with(['attendances' => function ($query) use ($year, $month, $schoolYear) 
                 {
                     $query->whereYear('scanned_at', $year)
-                        ->whereMonth('scanned_at', $month);
+                        ->whereMonth('scanned_at', $month)
+                        ->where('school_year_id', $schoolYear);
                 }
             ])
-            ->with(['attendanceDailySummary' => function ($query) use ($year, $month) 
+            ->with(['attendanceDailySummary' => function ($query) use ($year, $month, $schoolYear) 
                 {
                     $query->whereYear('date', $year)
-                        ->whereMonth('date', $month);
+                        ->whereMonth('date', $month)
+                        ->where('school_year_id', $schoolYear);
                 }
             ])
             ->with(['absences' => function ($query) use ($year, $month) 
@@ -58,7 +65,10 @@ class AttendanceController extends Controller
                         ->whereMonth('date', $month);
                 }
             ])
-            ->where('status','Active');
+            ->where('status','Active')
+            ->whereHas('schoolYearStudents', function ($q) use ($schoolYear) {
+                $q->where('school_year_id', $schoolYear);
+            });
 
         if (!empty($search)) {
             $query->where(function ($query) use ($search) {
@@ -499,5 +509,126 @@ class AttendanceController extends Controller
         $insertSummary->is_undertime = $is_undertime;
         $insertSummary->is_excused = $is_excused;
         $insertSummary->save();
+    }
+
+    public function updateDaily(Request $request)
+    {
+        //try {
+            $request->validate([
+                'student_id' => 'required|integer',
+                'date' => 'required|date',
+                'status' => 'required|in:present,absent',
+                'is_late' => 'nullable|integer',
+                'is_undertime' => 'nullable|integer',
+                'is_excused' => 'nullable|integer',
+                'remarks' => 'nullable|string',
+            ]);
+
+            DB::transaction(function () use ($request) {
+
+                /**
+                 * 🔍 Load student
+                 */
+                $student = Student::findOrFail($request->student_id);
+
+                /**
+                 * 📦 Snapshot from student
+                 */
+                $snapshot = [
+                    'school_year_id' => $student->school_year_id,
+                    'sy_from'        => $student->sy_from,
+                    'sy_to'          => $student->sy_to,
+                    'level'          => $student->level,
+                    'grade'          => $student->grade,
+                    'section'        => $student->section,
+                    'teachers_id'    => $student->teachers_id,
+                ];
+
+                /**
+                 * ======================
+                 * PRESENT
+                 * ======================
+                 */
+                if ($request->status === 'present') {
+
+                    AttendanceDailySummary::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'date' => $request->date,
+                        ],
+                        array_merge($snapshot, [
+                            'is_absent'    => null,
+                            'is_late'      => $request->is_late ?? 0,
+                            'is_undertime' => $request->is_undertime ?? 0,
+                            'is_excused'   => $request->is_excused ?? 0,
+                            'remarks'      => $request->remarks,
+                        ])
+                    );
+
+                    // 🗑️ Remove absence record if exists
+                    Absence::where('student_id', $student->id)
+                        ->where('date', $request->date)
+                        ->delete();
+                }
+
+                /**
+                 * ======================
+                 * ABSENT
+                 * ======================
+                 */
+                
+                if ($request->status === 'absent') {
+                    $checkAttendance = Attendance::where('student_id', $student->id)
+                        ->whereDate('scanned_at', date('Y-m-d', strtotime($request->date)))
+                        ->first();
+
+                    if($checkAttendance){
+                        AttendanceDailySummary::updateOrCreate(
+                            [
+                                'student_id' => $student->id,
+                                'date' => $request->date,
+                            ],
+                            array_merge($snapshot, [
+                                'is_absent'    => 1,
+                                'is_late'      => 0,
+                                'is_undertime' => 0,
+                                'is_excused'   => 0,
+                                'remarks'      => $request->remarks,
+                            ])
+                        );
+                    }else{
+                        AttendanceDailySummary::where('student_id', $student->id)
+                            ->where('date', $request->date)
+                            ->delete();
+                    }
+                    
+                    dd($student->id);
+                    // ➜ Insert absence if not exists
+                    Absence::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'date' => $request->date,
+                        ]
+                    );
+                }
+            });
+
+            return response()->json([
+                'message' => 'Attendance updated successfully'
+            ], 200);
+
+        // } catch (ValidationException $e) {
+
+        //     return response()->json([
+        //         'message' => 'Validation error',
+        //         'errors' => $e->errors(),
+        //     ], 422);
+
+        // } catch (\Exception $e) {
+
+        //     return response()->json([
+        //         'message' => 'Failed to update attendance. Please try again.',
+        //     ], 500);
+        // }
     }
 }

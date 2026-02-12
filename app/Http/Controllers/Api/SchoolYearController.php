@@ -43,23 +43,12 @@ class SchoolYearController extends Controller
         return response()->json($query);
     }
 
-    public function lists(Request $request)
+    public function lists()
     {
-        $search = $request->query('search');
-
-        $stations = Station::when($search, function ($query, $search) {
-            $query->where('station_name', 'like', "%$search%")
-                ->orWhere('location', 'like', "%$search%");
-        })->paginate(10);
-
+        $query = SchoolYear::orderBy('sy_from','DESC')->get();
+        
         return response()->json([
-            'data' => $stations->items(),
-            'meta' => [
-                'current_page' => $stations->currentPage(),
-                'last_page' => $stations->lastPage(),
-                'prev' => $stations->previousPageUrl(),
-                'next' => $stations->nextPageUrl(),
-            ]
+            'data' => $query
         ]);
     }
 

@@ -11,7 +11,10 @@ class GradeController extends Controller
 {
     public function index()
     {
-        $grades = Teacher::distinct()->pluck('grade');
+        $grades = Teacher::select('grade')
+                    ->distinct()
+                    ->orderBy('grade', 'ASC')
+                    ->pluck('grade');
 
         return response()->json($grades);
     }

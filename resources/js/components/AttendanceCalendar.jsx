@@ -38,19 +38,27 @@ const AttendanceCalendar = () => {
     const [students, setStudents] = useState([]);
     const [search, setSearch] = useState("");
     const [selectedDay, setSelectedDay] = useState([]);
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
     const [formModal, setFormModal] = useState(false);
     const [form, setForm] = useState({
         student_id: "",
+        status: "absent",
         date: "",
         is_late: 0,
         is_undertime: 0,
         is_excused: 0,
-        attendance_id: ""
+        attendance_id: "",
+        remarks: "",
     });
 
     useEffect(() => {
+        fetchSchoolYears()
+    }, []);
+
+    useEffect(() => {
         fetchAttendances();
-    }, [search, month, year]);
+    }, [search, month, year, selectedSchoolYear]);
 
     const fetchAttendances = async () => {
         try {            
@@ -59,13 +67,29 @@ const AttendanceCalendar = () => {
                 params: {
                     search: search,
                     month: month,
-                    year: year
+                    year: year,
+                    schoolYear: selectedSchoolYear
                 },
                 headers: { Authorization: `Bearer ${authToken}` },
             });
             setStudents(response.data.data);
         } catch (error) {
             // console.error("Error fetching:", error);
+        }
+    };
+
+    const fetchSchoolYears = async () => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const response = await axios.get('/api/schoolYears/lists', {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            setSchoolYears(response.data.data);
+            setSelectedSchoolYear(response.data.data[0]?.id || "");
+        } catch (error) {
+            toastr.error('Failed to load school years');
+            setSchoolYears([]);
+            setSelectedSchoolYear("");
         }
     };
 
@@ -93,21 +117,39 @@ const AttendanceCalendar = () => {
 
     const daysInMonth = getDaysInMonth(year, month);
 
-    const handleDailyClick  = (student_id, date, attendance) => {
+    const handleDailyClick = (student_id, date, attendance) => {
         setForm({
-            student_id: student_id,
-            date: date,
-            is_late: attendance?.is_late,
-            is_undertime: attendance?.is_undertime,
-            is_excused: attendance?.is_excused,
-            attendance_id: attendance.id
-        })
+            student_id,
+            date,
+            attendance_id: attendance?.id ?? null,
+            status: attendance?.id ? "present" : "absent",
+            is_late: attendance?.is_late ?? 0,
+            is_undertime: attendance?.is_undertime ?? 0,
+            is_excused: attendance?.is_excused ?? 0,
+            remarks: attendance?.remarks ?? ""
+        });
+
         setFormModal(true);
     };
 
     return (
         <div className="border border-gray-300 shadow-xl rounded-lg p-6 bg-white mx-auto w-full mt-4">
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 items-end mb-4">
+            <div className="grid grid-cols-3 sm:grid-cols-3 gap-4 items-end mb-4">
+                <div className="flex flex-col">
+                    <label htmlFor="schoolYear" className="mb-1 font-semibold text-gray-700">School Year</label>
+                    <select
+                        id="schoolYear"
+                        value={selectedSchoolYear}
+                        onChange={e => setSelectedSchoolYear(Number(e.target.value))}
+                        className="border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        {schoolYears.map((sy) => (
+                            <option key={sy.id} value={sy.id}>
+                                S.Y. {sy.sy_from}-{sy.sy_to}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <div className="flex flex-col">
                     <label htmlFor="year" className="mb-1 font-semibold text-gray-700">Year</label>
                     <select

@@ -15,32 +15,37 @@ const UsersList = () => {
     const [userModal, setUserModal] = useState(false);
     const [lastnameOfUser, setLastnameOfUser] = useState("");
     const [firstnameOfUser, setFirstnameOfUser] = useState("");
-    const [extnameOfUser, setExtnameOfUser] = useState(null);
-    const [middlenameOfUser, setMiddlenameOfUser] = useState(null);
+    const [extnameOfUser, setExtnameOfUser] = useState("");
+    const [middlenameOfUser, setMiddlenameOfUser] = useState("");
     const [userNameOfUser, setUserNameOfUser] = useState("");
     const [passwordOfUser, setPasswordOfUser] = useState("");
     const [roleOfUser, setRoleOfUser] = useState(2);
     const [levelOfUser, setLevelOfUser] = useState("Elementary");
-    const [gradeOfUser, setGradeOfUser] = useState(null);
-    const [sectionOfUser, setSectionOfUser] = useState(null);
+    const [gradeOfUser, setGradeOfUser] = useState("");
+    const [sectionOfUser, setSectionOfUser] = useState("");
     const [newPhoto, setNewPhoto] = useState(null);
     const [photo, setPhoto] = useState(null);
-    const [email, setEmail] = useState(null);
-    const [contactNo, setContactNo] = useState(null);
-    const [address, setAddress] = useState(null);
-    const [idOfUser, setIdOfUser] = useState(null);
+    const [email, setEmail] = useState("");
+    const [contactNo, setContactNo] = useState("");
+    const [address, setAddress] = useState("");
+    const [idOfUser, setIdOfUser] = useState("");
     const [roles, setRoles] = useState([]);
     const [file, setFile] = useState(null);
     const [isEditingPassword, setIsEditingPassword] = useState(false);
     const [status, setStatus] = useState("Active");
-    const [position, setPosition] = useState(null);
+    const [position, setPosition] = useState("");
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [schoolYearId, setSchoolYearId] = useState("");
     const [sex, setSex] = useState("Male");
+    const [idNo, setIdNo] = useState("");
+
     useEffect(() => {
         fetchUsers();
     }, [search, page]);
 
     useEffect(() => {
         fetchRoles();
+        fetchSchoolYears();
     }, []);
 
     const fetchUsers = async () => {
@@ -72,6 +77,21 @@ const UsersList = () => {
         }
     };
 
+    const fetchSchoolYears = async () => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const response = await axios.get('/api/schoolYears/lists', {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            setSchoolYears(response.data.data);
+            setSchoolYearId(response.data.data.length > 0 ? response.data.data[0].id : "");
+        } catch (error) {
+            toastr.error('Failed to load school years');
+            setSchoolYears([]);
+            setSchoolYearId("");
+        }
+    };
+
     const handleSearch = (e) => {
         setSearch(e.target.value);
         setPage(1);
@@ -100,6 +120,7 @@ const UsersList = () => {
     };
     
     const handleEditUser = (user) => {
+        setIdNo(user.teacher?.id_no);
         setLastnameOfUser(user.lastname);
         setFirstnameOfUser(user.firstname);
         setExtnameOfUser(user.extname);
@@ -117,58 +138,73 @@ const UsersList = () => {
         setAddress(user.teacher?.address);
         setPosition(user.teacher?.position);
         setSex(user.teacher?.sex || 'Male');
+        setSchoolYearId(user.teacher?.school_year_id || (schoolYears.length > 0 ? schoolYears[0]?.id : ""));
         setUserModal(true);
     };
 
     const handleUserSubmit = async () => {
-        if(validateForm){
-            if(idOfUser==null){
+        const isFormValid = validateForm();
+
+        if (isFormValid) {
+            if (!idOfUser || idOfUser === "") {
                 handleNewUserSubmit();
-            }else{
+            } else {
                 handleUpdateUserSubmit();
             }
         }
     };
 
     const validateForm = () => {
-        let isValid = false;
-        if(lastnameOfUser==""){
-            toastr.success("Lastname is required!"); 
+        let isValid = true;
+
+        if (!lastnameOfUser || lastnameOfUser === "") {
+            toastr.error("Lastname is required!");
             isValid = false;
         }
-        if(firstnameOfUser==""){
-            toastr.success("Firstname is required!"); 
+        if (!firstnameOfUser || firstnameOfUser === "") {
+            toastr.error("Firstname is required!");
             isValid = false;
         }
-        if(userNameOfUser==""){
-            toastr.success("Username is required!"); 
+        if (!userNameOfUser || userNameOfUser === "") {
+            toastr.error("Username is required!");
             isValid = false;
         }
-        if(passwordOfUser==""){
-            toastr.success("Password is required!"); 
+        if (!passwordOfUser || passwordOfUser === "") {
+            toastr.error("Password is required!");
             isValid = false;
         }
-        if(roleOfUser==3){
-            if(levelOfUser==""){
-                toastr.success("Level is required!"); 
+
+        if (Number(roleOfUser) === 3) {
+            if (!idNo || idNo === "") {
+                toastr.error("ID No. is required!");
                 isValid = false;
             }
-            if(gradeOfUser==""){
-                toastr.success("Grade is required!"); 
+            if (!contactNo || contactNo === "") {
+                toastr.error("Contact No. is required!");
                 isValid = false;
             }
-            if(sectionOfUser==""){
-                toastr.success("Section is required!"); 
+            if (!levelOfUser || levelOfUser === "") {
+                toastr.error("Level is required!");
+                isValid = false;
+            }
+            if (!gradeOfUser || gradeOfUser === "") {
+                toastr.error("Grade is required!");
+                isValid = false;
+            }
+            if (!sectionOfUser || sectionOfUser === "") {
+                toastr.error("Section is required!");
                 isValid = false;
             }
         }
+
         return isValid;
-    }
+    };
 
     const handleNewUserSubmit = async () => {
         try {
             const formData = new FormData();
 
+            formData.append('id_no', idNo);
             formData.append('lastname', lastnameOfUser);
             formData.append('firstname', firstnameOfUser);
             formData.append('extname', extnameOfUser);
@@ -187,6 +223,7 @@ const UsersList = () => {
             formData.append('newPhoto', newPhoto);
             formData.append('position', position);
             formData.append('sex', sex);
+            formData.append('school_year_id', schoolYearId);
 
             const authToken = localStorage.getItem("token");
             const response = await axios.post("/api/users/store", formData, {
@@ -198,22 +235,26 @@ const UsersList = () => {
 
             if (response.status === 200 || response.status === 201) {
                 toastr.success("User added successfully!"); 
+                setIdNo("");
                 setLastnameOfUser("");
                 setFirstnameOfUser("");
-                setExtnameOfUser(null);
-                setMiddlenameOfUser(null);
+                setExtnameOfUser("");
+                setMiddlenameOfUser("");
                 setUserNameOfUser("");
                 setPasswordOfUser("");
                 setRoleOfUser(2);
-                setIdOfUser(null);     
+                setIdOfUser("");     
                 setStatus("Active");
-                setEmail(null);
-                setContactNo(null);
-                setAddress(null);      
-                setPosition(null);     
+                setEmail("");
+                setContactNo("");
+                setAddress("");      
+                setPosition("");     
                 setSex("Male");
                 fetchUsers();
                 setUserModal(false);
+                setGradeOfUser("");
+                setSectionOfUser("");
+                setSchoolYearId(schoolYears.length > 0 ? schoolYears[0].id : "");
             } else {
                 toastr.error("Unexpected response");
             }
@@ -227,6 +268,7 @@ const UsersList = () => {
         try {
             const formData = new FormData();
 
+            formData.append('id_no', idNo);
             formData.append('lastname', lastnameOfUser);
             formData.append('firstname', firstnameOfUser);
             formData.append('extname', extnameOfUser);
@@ -245,6 +287,7 @@ const UsersList = () => {
             formData.append('newPhoto', newPhoto);
             formData.append('position', position);
             formData.append('sex', sex);
+            formData.append('school_year_id', schoolYearId);
 
             const authToken = localStorage.getItem("token");
             const response = await axios.post(`/api/users/update/${idOfUser}`, formData, {
@@ -256,22 +299,26 @@ const UsersList = () => {
 
             if (response.status === 200 || response.status === 201) {
                 toastr.success("User updated successfully!"); 
+                setIdNo("");
                 setLastnameOfUser("");
                 setFirstnameOfUser("");
-                setExtnameOfUser(null);
-                setMiddlenameOfUser(null);
+                setExtnameOfUser("");
+                setMiddlenameOfUser("");
                 setUserNameOfUser("");
                 setPasswordOfUser("");
                 setRoleOfUser(2);
-                setIdOfUser(null);
+                setIdOfUser("");
                 setStatus("Active");
-                setEmail(null);
-                setContactNo(null);
-                setAddress(null);     
-                setPosition(null);
+                setEmail("");
+                setContactNo("");
+                setAddress("");     
+                setPosition("");
                 setSex("Male");
+                setGradeOfUser("");
+                setSectionOfUser("");
                 fetchUsers();
                 setUserModal(false);
+                setSchoolYearId(schoolYears.length > 0 ? schoolYears[0].id : "");
             } else {
                 toastr.error("Unexpected response");
             }
@@ -286,21 +333,25 @@ const UsersList = () => {
     };
 
     const handleUserModalClose  = async () => {
+        setIdNo("");
         setLastnameOfUser("");
         setFirstnameOfUser("");
-        setExtnameOfUser(null);
-        setMiddlenameOfUser(null);
+        setExtnameOfUser("");
+        setMiddlenameOfUser("");
         setUserNameOfUser("");
         setPasswordOfUser("");
         setStatus("Active");
-        setEmail(null);
-        setContactNo(null);
-        setAddress(null);     
-        setPosition(null);
+        setEmail("");
+        setContactNo("");
+        setAddress("");     
+        setPosition("");
+        setGradeOfUser("");
+        setSectionOfUser(""); 
         setSex("Male");
         setRoleOfUser(2);
-        setIdOfUser(null);
+        setIdOfUser("");
         setUserModal(false);
+        setSchoolYearId(schoolYears.length > 0 ? schoolYears[0].id : "");
     };
 
     return (
@@ -394,6 +445,8 @@ const UsersList = () => {
                 userModal={userModal}
                 handleUserModalClose={handleUserModalClose}
                 handleUserSubmit={handleUserSubmit}
+                idNo={idNo}
+                setIdNo={setIdNo}
                 setLastnameOfUser={setLastnameOfUser}
                 setFirstnameOfUser={setFirstnameOfUser}
                 setExtnameOfUser={setExtnameOfUser}
@@ -433,6 +486,9 @@ const UsersList = () => {
                 address={address}
                 position={position}
                 sex={sex}
+                schoolYears={schoolYears}
+                schoolYearId={schoolYearId}
+                setSchoolYearId={setSchoolYearId}
             />
         </Layout>
     );

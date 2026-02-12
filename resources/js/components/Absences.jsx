@@ -21,6 +21,8 @@ const Absences = () => {
     const [sections, setSections] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
     const [duration, setDuration] = useState([
         new Date(),
         new Date(),
@@ -35,6 +37,7 @@ const Absences = () => {
         
         fetchSections();
         fetchGrades();
+        fetchSchoolYears();
     }, []);
 
     useEffect(() => {
@@ -56,7 +59,8 @@ const Absences = () => {
                     grade: grade,
                     section: section,
                     startDate: startDate, 
-                    endDate: endDate
+                    endDate: endDate,
+                    schoolYear: selectedSchoolYear,
                 },
                 headers: { Authorization: `Bearer ${authToken}` },
             });
@@ -66,6 +70,21 @@ const Absences = () => {
             // toastr.error('Failed to load students');
         } finally {
 
+        }
+    };
+
+    const fetchSchoolYears = async () => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const response = await axios.get('/api/schoolYears/lists', {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            setSchoolYears(response.data.data);
+            setSelectedSchoolYear(response.data.data[0]?.id || "");
+        } catch (error) {
+            toastr.error('Failed to load school years');
+            setSchoolYears([]);
+            setSelectedSchoolYear("");
         }
     };
 
@@ -126,8 +145,8 @@ const Absences = () => {
                 </div>
                 
                 <div>
-                    {/* Search Input */}
-                    <div className={`grid gap-4 mb-4 grid-cols-1 ${userRole < 3 ? 'md:grid-cols-4' : 'md:grid-cols-2'}`}>
+                    <div className="mb-4">
+                        {/* Search Input */}
                         <input
                             type="text"
                             placeholder="Search absences..."
@@ -135,6 +154,9 @@ const Absences = () => {
                             onChange={handleSearch}
                             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                    </div>
+                    
+                    <div className={`grid gap-4 mb-4 grid-cols-1 ${userRole < 3 ? 'md:grid-cols-4' : 'md:grid-cols-2'}`}>                        
                         {/* Single Calendar for Date Duration */}
                         <DatePicker
                             selected={startDate}
@@ -146,6 +168,19 @@ const Absences = () => {
                             placeholderText="Select duration"
                             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+
+                        <select 
+                            value={selectedSchoolYear}
+                            onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {schoolYears.map((sy) => (
+                                <option key={sy.id} value={sy.id}>
+                                    S.Y. {sy.sy_from}-{sy.sy_to}
+                                </option>
+                            ))}
+                        </select>
+
                         {userRole<3 && ( <>
                         <select
                             value={grade}

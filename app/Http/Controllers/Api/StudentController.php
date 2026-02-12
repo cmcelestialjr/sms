@@ -35,10 +35,16 @@ class StudentController extends Controller
 
         $students = Student::with('teacher')
             ->when($search, function ($query, $search) {
-            $query->where('firstname', 'like', "%$search%")
-                ->orWhere('lastname', 'like', "%$search%")
-                ->orWhere('student_id', 'like', "%$search%");
-        });
+                $query->where(function ($q) use ($search) {
+                    $q->where('firstname', 'like', "%$search%")
+                        ->orWhere('lastname', 'like', "%$search%")
+                        ->orWhere('middlename', 'like', "%{$search}%")
+                        ->orWhere('student_id', 'like', "%$search%")
+                        ->orWhere('lrn_no', 'like', "%$search%")
+                        ->orWhere('grade', 'like', "%$search%")
+                        ->orWhere('section', 'like', "%$search%");
+                });
+            });
 
         if($user->role_id==3){
             if ($request->has('status')){
@@ -59,6 +65,11 @@ class StudentController extends Controller
                 $status = $request->status;
                 $students->where('status', $status);
             }
+        }
+
+        if($request->has('schoolYear') && !empty($request->schoolYear)){
+            $schoolYear = $request->schoolYear;
+            $students->where('school_year_id', $schoolYear);
         }
         
         $students = $students->orderBy('lastname')->paginate(10);
@@ -81,21 +92,33 @@ class StudentController extends Controller
 
     public function search(Request $request)
     {
-        $query = $request->get('search');
+        $search = $request->get('search');
 
         $user = Auth::user();
 
-        $students = Student::where(function($q) use ($query) {
-            $q->where('lastname', 'like', "%{$query}%")
-            ->orWhere('firstname', 'like', "%{$query}%")
-            ->orWhere('middlename', 'like', "%{$query}%")
-            ->orWhere('student_id', 'like', "%{$query}%");
+        $students = Student::with('teacher')
+        ->when($search, function ($query, $search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('firstname', 'like', "%$search%")
+                    ->orWhere('lastname', 'like', "%$search%")
+                    ->orWhere('middlename', 'like', "%{$search}%")
+                    ->orWhere('student_id', 'like', "%$search%")
+                    ->orWhere('lrn_no', 'like', "%$search%")
+                    ->orWhere('grade', 'like', "%$search%")
+                    ->orWhere('section', 'like', "%$search%");
+            });
         });
+        
         if($request->has('f')){
             if($user->role_id==3 && $request->f=='message'){
                 $students->where('teachers_id',$user->id);
             }
-        }        
+        }
+
+        if($request->has('schoolYear') && !empty($request->schoolYear)){
+            $schoolYear = $request->schoolYear;
+            $students->where('school_year_id', $schoolYear);
+        }
 
         $students = $students->limit(10)
             ->get();
@@ -171,16 +194,24 @@ class StudentController extends Controller
                 $level = $teacher->level;
                 $grade = $teacher->grade;
                 $section = $teacher->section;
+                $school_year_id = $teacher->school_year_id;
+                $sy_from = $teacher->sy_from;
+                $sy_to = $teacher->sy_to;
             }else{
                 $level = 'Elementary';
                 $grade = NULL;
                 $section = NULL;
+
+                $getSchoolYear = $this->schoolYearServices->getSchoolYear();
+                $school_year_id = $getSchoolYear['school_year_id'];
+                $sy_from = $getSchoolYear['sy_from'];
+                $sy_to = $getSchoolYear['sy_to'];
             }
 
-            $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-            $validated['school_year_id'] = $getSchoolYear['school_year_id'];
-            $validated['sy_from'] = $getSchoolYear['sy_from'];
-            $validated['sy_to'] = $getSchoolYear['sy_to'];        
+            
+            $validated['school_year_id'] = $school_year_id;
+            $validated['sy_from'] = $sy_from;
+            $validated['sy_to'] = $sy_to;
 
             $validated['status'] = 'Active';
             $validated['level'] = $level;
@@ -208,7 +239,7 @@ class StudentController extends Controller
 
             $name = "$lastname, $firstname $extname $middleInitial";
 
-            $message = $name." is currently enrolled in Alangalang National School. Thank you.";
+            $message = $name." is currently enrolled in Leyte Normal University. Thank you.";
             
             $message = str_replace(" ","_",$message);
 
@@ -288,12 +319,6 @@ class StudentController extends Controller
             $validated['photo'] = $request->file('newPhoto')->store('students', 'public');
         }
 
-        if($validated['status']=='Active'){
-            $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-            $validated['sy_from'] = $getSchoolYear['sy_from'];
-            $validated['sy_to'] = $getSchoolYear['sy_to'];
-        }
-
         if($user->role_id<3){      
             $request->validate([
                 'teachers_id' => 'required|integer|exists:users,id',
@@ -303,10 +328,15 @@ class StudentController extends Controller
             
             if($teacher){
                 $validated['teachers_id'] = $request->teachers_id;
-                $validated['level'] = $teacher->level;
-                $validated['grade'] = $teacher->grade;
-                $validated['section'] = $teacher->section;
-            }            
+                if($validated['status']=='Active'){
+                    $validated['school_year_id'] = $teacher->school_year_id;
+                    $validated['sy_from'] = $teacher->sy_from;
+                    $validated['sy_to'] = $teacher->sy_to;
+                    $validated['level'] = $teacher->level;
+                    $validated['grade'] = $teacher->grade;
+                    $validated['section'] = $teacher->section;
+                }
+            }
         }
 
         if($option=='store' && $user->role_id==3){
@@ -332,13 +362,21 @@ class StudentController extends Controller
             $totals->where('teachers_id',$user->id);
         }
         
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $totals->where(function ($q) use ($search) {
-                $q->where('firstname', 'like', "%$search%")
-                ->orWhere('lastname', 'like', "%$search%")
-                ->orWhere('student_id', 'like', "%$search%");
-            });
+        // if ($request->has('search') && !empty($request->search)) {
+        //     $search = $request->search;
+        //     $totals->where(function ($q) use ($search) {
+        //         $q->where('firstname', 'like', "%$search%")
+        //         ->orWhere('lastname', 'like', "%$search%")
+        //         ->orWhere('student_id', 'like', "%$search%")
+        //         ->orWhere('lrn_no', 'like', "%$search%")
+        //         ->orWhere('grade', 'like', "%$search%")
+        //         ->orWhere('section', 'like', "%$search%");
+        //     });
+        // }
+
+        if($request->has('schoolYear') && !empty($request->schoolYear)){
+            $schoolYear = $request->schoolYear;
+            $totals->where('school_year_id', $schoolYear);
         }
 
         $totals = $totals->groupBy('status')
@@ -375,10 +413,7 @@ class StudentController extends Controller
 
         $teacher = Teacher::where('user_id',$teacher_id_requested)->first();
 
-        $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-        $sy_from = $getSchoolYear['sy_from'];
-        $sy_to = $getSchoolYear['sy_to'];
-
+        $student->school_year_id = $teacher->school_year_id;
         $student->sy_from = $teacher->sy_from;
         $student->sy_to = $teacher->sy_to;
         $student->level = $teacher->level;

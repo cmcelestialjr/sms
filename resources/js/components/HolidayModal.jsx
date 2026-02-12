@@ -117,6 +117,9 @@ const HolidayModal = ({ show, onClose, onSave, holiday }) => {
                             <option key="1" value="Special">
                                 Special
                             </option>
+                            <option key="2" value="Suspension">
+                                Suspension
+                            </option>
                         </select>
                     </div>
 

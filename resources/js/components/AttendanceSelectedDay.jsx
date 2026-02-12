@@ -38,34 +38,59 @@ const AttendanceSelectedDay = ({ formModal, setFormModal, form, setForm, fetchAt
         try {
             const authToken = localStorage.getItem("token");
 
-            const formData = form
-
             const config = {
                 headers: {
                     Authorization: `Bearer ${authToken}`,
                 },
             };
 
-            await axios.put(`/api/attendances/${form.employee_id}`, formData, config);
+            const formData = {
+                student_id: form.student_id,
+                status: form.status,
+                date: form.date,
+                is_late: form.is_late,
+                is_undertime: form.is_undertime,
+                is_excused: form.is_excused,
+                remarks: form.remarks,
+                attendance_id: form.attendance_id,
+            };
 
-            setForm({
-                student_id: "",
-                date: "",
-                is_late: 0,
-                is_undertime: 0,
-                is_excused: 0
-            });
-            
+            await axios.put(
+                `/api/attendances/daily`,
+                formData,
+                config
+            );
+
             fetchAttendances();
             setFormModal(false);
+
         } catch (err) {
-            toastr.error("Error saving data"+err);
+            toastr.error("Error saving data");
+            console.error(err);
         }
+    };
+
+
+    const handleStatusChange = (status) => {
+        setForm(prev => ({
+            ...prev,
+            status: status,
+            is_late: status === "present" ? prev.is_late : 0,
+            is_undertime: status === "present" ? prev.is_undertime : 0,
+            is_excused: status === "present" ? prev.is_excused : 0,
+        }));
+    };
+
+    const handleCheckbox = (name) => {
+        setForm(prev => ({
+            ...prev,
+            [name]: prev[name] ? 0 : 1
+        }));
     };
     
 
     return (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex justify-center items-center z-50">
             <div className="bg-white rounded-lg p-6 shadow-lg max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
                 <div className="flex justify-between">
                     <h2 className="text-xl font-semibold">
@@ -86,246 +111,118 @@ const AttendanceSelectedDay = ({ formModal, setFormModal, form, setForm, fetchAt
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="mt-3 grid grid-cols-1 gap-2">
-                        <div className="mt-4 flex items-center">
-                            <div className="flex items-center space-x-1">
-                                <label className="text-sm font-medium text-gray-700">
-                                    Daily Schedule
-                                </label>
-                            </div>
-                        </div>
-                        <div className="mt-1 flex justify-between items-center">
-                            <div>
-                                <label className="block mb-1">
-                                    <strong>Schedule Time In:</strong>
-                                </label>
-                                <DatePicker
-                                    selected={regularTimeIn}
-                                    onChange={(time) => setRegularTimeIn(time)}
-                                    showTimeSelect
-                                    showTimeSelectOnly
-                                    timeIntervals={15}
-                                    timeCaption="Time In"
-                                    dateFormat="hh:mm aa"
-                                    className="border px-2 py-2 rounded-lg w-full"
-                                    customInput={
-                                        <InputMask
-                                            mask="99:99 aa"
-                                            maskChar=" "
-                                            value={regularTimeIn ? regularTimeIn.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const date = new Date();
-                                                const [hours, minutes] = value.split(':');
-                                                if (hours && minutes) {
-                                                    date.setHours(parseInt(hours));
-                                                    date.setMinutes(parseInt(minutes));
-                                                    setRegularTimeIn(date);
-                                                }
-                                            }}
-                                        >
-                                            {(inputProps) => <input {...inputProps} />}
-                                        </InputMask>
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="block mb-1">
-                                    <strong>Schedule Time Out:</strong>
-                                </label>
-                                <DatePicker
-                                    selected={regularTimeOut}
-                                    onChange={(time) => setRegularTimeOut(time)}
-                                    showTimeSelect
-                                    showTimeSelectOnly
-                                    timeIntervals={15}
-                                    timeCaption="Time Out"
-                                    dateFormat="hh:mm aa"
-                                    className="border px-2 py-2 rounded-lg w-full"
-                                    customInput={
-                                        <InputMask
-                                            mask="99:99 aa"
-                                            maskChar=" "
-                                            value={regularTimeOut ? regularTimeOut.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const date = new Date();
-                                                const [hours, minutes] = value.split(':');
-                                                if (hours && minutes) {
-                                                    date.setHours(parseInt(hours));
-                                                    date.setMinutes(parseInt(minutes));
-                                                    setRegularTimeOut(date);
-                                                }
-                                            }}
-                                        >
-                                            {(inputProps) => <input {...inputProps} />}
-                                        </InputMask>
-                                    }
-                                />
-                            </div>
-                        </div>
-                        <div className="mt-4 flex items-center">
-                            <div className="flex items-center space-x-3">
-                                <label className="text-sm font-medium text-gray-700">
-                                    OverTime Schedule
-                                </label>
-                            </div>
-                        </div>
-                        <div className="mt-1 flex justify-between items-center">
-                            <div>
-                                <label className="block mb-1">
-                                    <strong>Over-Time In:</strong>
-                                </label>
-                                <DatePicker
-                                    selected={overTimeIn || null}
-                                    onChange={(time) => setOverTimeIn(time)}
-                                    showTimeSelect
-                                    showTimeSelectOnly
-                                    timeIntervals={15}
-                                    timeCaption="Time In"
-                                    dateFormat="hh:mm aa"
-                                    className="border px-3 py-2 rounded-lg w-full"
-                                    customInput={
-                                        <InputMask
-                                            mask="99:99 aa"
-                                            maskChar=" "
-                                            value={overTimeIn ? overTimeIn.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const date = new Date();
-                                                const [hours, minutes] = value.split(':');
-                                                if (hours && minutes) {
-                                                    date.setHours(parseInt(hours));
-                                                    date.setMinutes(parseInt(minutes));
-                                                    setOverTimeIn(date);
-                                                }
-                                            }}
-                                        >
-                                            {(inputProps) => <input {...inputProps} />}
-                                        </InputMask>
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="block mb-1">
-                                    <strong>Over-Time Out:</strong>
-                                </label>
-                                <DatePicker
-                                    selected={overTimeOut || null}
-                                    onChange={(time) => setOverTimeOut(time)}
-                                    showTimeSelect
-                                    showTimeSelectOnly
-                                    timeIntervals={15}
-                                    timeCaption="Time Out"
-                                    dateFormat="hh:mm aa"
-                                    className="border px-3 py-2 rounded-lg w-full"
-                                    customInput={
-                                        <InputMask
-                                            mask="99:99 aa"
-                                            maskChar=" "
-                                            value={overTimeOut ? overTimeOut.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const date = new Date();
-                                                const [hours, minutes] = value.split(':');
-                                                if (hours && minutes) {
-                                                    date.setHours(parseInt(hours));
-                                                    date.setMinutes(parseInt(minutes));
-                                                    setOverTimeOut(date);
-                                                }
-                                            }}
-                                        >
-                                            {(inputProps) => <input {...inputProps} />}
-                                        </InputMask>
-                                    }
-                                />
-                            </div>
-                        </div>
-                        <div className="mt-4 flex items-center">
-                            <div className="flex items-center space-x-3">
-                                <input
-                                    type="checkbox"
-                                    checked={sameTimeChecked}
-                                    onChange={handleCheckboxChange}
-                                    id="same-time-checkbox"
-                                    className="h-5 w-5 text-blue-600 border-gray-300 rounded-md focus:ring-blue-500"
-                                />
-                                <label htmlFor="same-time-checkbox" className="text-sm font-medium text-gray-700">
-                                    Set Actual Time Same as Schedule Time
-                                </label>
-                            </div>
-                        </div>
-                        <div className="mt-2 mb-4 flex justify-between items-center">
-                            <div>
-                                <label className="block mb-1">
-                                    <strong>Actual Time In:</strong>
-                                </label>
-                                <DatePicker
-                                    selected={actualTimeIn || null}
-                                    onChange={(time) => setActualTimeIn(time)}
-                                    showTimeSelect
-                                    showTimeSelectOnly
-                                    timeIntervals={15}
-                                    timeCaption="Time In"
-                                    dateFormat="hh:mm aa"
-                                    className="border px-3 py-2 rounded-lg w-full"
-                                    customInput={
-                                        <InputMask
-                                            mask="99:99 aa"
-                                            maskChar=" "
-                                            value={actualTimeIn ? actualTimeIn.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const date = new Date();
-                                                const [hours, minutes] = value.split(':');
-                                                if (hours && minutes) {
-                                                    date.setHours(parseInt(hours));
-                                                    date.setMinutes(parseInt(minutes));
-                                                    setActualTimeIn(date);
-                                                }
-                                            }}
-                                        >
-                                            {(inputProps) => <input {...inputProps} />}
-                                        </InputMask>
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="block mb-1">
-                                    <strong>Actual Time Out:</strong>
-                                </label>
-                                <DatePicker
-                                    selected={actualTimeOut || null}
-                                    onChange={(time) => setActualTimeOut(time)}
-                                    showTimeSelect
-                                    showTimeSelectOnly
-                                    timeIntervals={15}
-                                    timeCaption="Time Out"
-                                    dateFormat="hh:mm aa"
-                                    className="border px-3 py-2 rounded-lg w-full"
-                                    customInput={
-                                        <InputMask
-                                            mask="99:99 aa"
-                                            maskChar=" "
-                                            value={actualTimeOut ? actualTimeOut.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const date = new Date();
-                                                const [hours, minutes] = value.split(':');
-                                                if (hours && minutes) {
-                                                    date.setHours(parseInt(hours));
-                                                    date.setMinutes(parseInt(minutes));
-                                                    setActualTimeOut(date);
-                                                }
-                                            }}
-                                        >
-                                            {(inputProps) => <input {...inputProps} />}
-                                        </InputMask>
-                                    }
-                                />
-                            </div>
-                        </div>                        
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                        <button
+                            type="button"
+                            onClick={() => handleStatusChange("present")}
+                            className={`flex items-center justify-center gap-2 p-3 rounded-lg border
+                                ${form.status === "present"
+                                    ? "bg-green-600 text-white border-green-600"
+                                    : "bg-white text-gray-700 border-gray-300"
+                                }`}
+                        >
+                            <CheckCircle size={18} />
+                            Present
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleStatusChange("absent")}
+                            className={`flex items-center justify-center gap-2 p-3 rounded-lg border
+                                ${form.status === "absent"
+                                    ? "bg-red-600 text-white border-red-600"
+                                    : "bg-white text-gray-700 border-gray-300"
+                                }`}
+                        >
+                            <XCircle size={18} />
+                            Absent
+                        </button>
                     </div>
+
+                    {form.status === "present" && (
+                        <div className="mt-4 space-y-3">
+                            <label className="flex items-center gap-4 p-3 border border-gray-300 rounded-lg cursor-pointer
+                                hover:bg-gray-50 transition"
+                                onClick={() => handleCheckbox("is_late")}
+                            >
+                                
+                                <div
+                                    
+                                    className={`w-6 h-6 flex items-center justify-center rounded-md border-2
+                                        ${form.is_late === 1
+                                            ? "bg-blue-600 border-blue-600"
+                                            : "border-gray-300 bg-white"
+                                        }`}
+                                >
+                                    {form.is_late === 1 && (
+                                        <Check size={16} className="text-white" />
+                                    )}
+                                </div>
+
+                                <span className="text-sm font-medium text-gray-800">
+                                    Late
+                                </span>
+                            </label>
+
+                            <label className="flex items-center gap-4 p-3 border border-gray-300 rounded-lg cursor-pointer
+                                hover:bg-gray-50 transition"
+                                onClick={() => handleCheckbox("is_undertime")}
+                            >
+                                
+                                <div                                    
+                                    className={`w-6 h-6 flex items-center justify-center rounded-md border-2
+                                        ${form.is_undertime === 1
+                                            ? "bg-blue-600 border-blue-600"
+                                            : "border-gray-300 bg-white"
+                                        }`}
+                                >
+                                    {form.is_undertime === 1 && (
+                                        <Check size={16} className="text-white" />
+                                    )}
+                                </div>
+
+                                <span className="text-sm font-medium text-gray-800">
+                                    Undertime
+                                </span>
+                            </label>
+
+                            <label className="flex items-center gap-4 p-3 border border-gray-300 rounded-lg cursor-pointer
+                                hover:bg-gray-50 transition"
+                                onClick={() => handleCheckbox("is_excused")}
+                            >
+                                
+                                <div                                    
+                                    className={`w-6 h-6 flex items-center justify-center rounded-md border-2
+                                        ${form.is_excused === 1
+                                            ? "bg-blue-600 border-blue-600"
+                                            : "border-gray-300 bg-white"
+                                        }`}
+                                >
+                                    {form.is_excused === 1 && (
+                                        <Check size={16} className="text-white" />
+                                    )}
+                                </div>
+
+                                <span className="text-sm font-medium text-gray-800">
+                                    Excused
+                                </span>
+                            </label>
+                            
+                            <div>
+                                <label className="block text-sm font-medium mb-1">
+                                    Remarks
+                                </label>
+                                <textarea
+                                    name="remarks"
+                                    value={form.remarks}
+                                    onChange={handleChange}
+                                    rows={3}
+                                    className="w-full border border-gray-300 rounded-lg p-2"
+                                    placeholder="..."
+                                />
+                            </div>
+                        </div>
+                    )}
                     <div className="flex justify-between">
                         <button 
                             type="button"

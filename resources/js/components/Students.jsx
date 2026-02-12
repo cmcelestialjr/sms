@@ -29,6 +29,8 @@ const Students = () => {
     const [totalApproved, setTotalApproved] = useState(0);
     const [totalRequested, setTotalRequested] = useState(0);
     const [totalPending, setTotalPending] = useState(0);
+    const [schoolYears, setSchoolYears] = useState([]);
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
     const [studentForm, setStudentForm] = useState({
         search_student_id: "",
         student_id: "",
@@ -108,15 +110,16 @@ const Students = () => {
         if (didFetch.current) return;
         didFetch.current = true;
 
+        fetchSchoolYears();
     }, []);
 
     useEffect(() => {
         fetchStudents(selectedStatus);
-    }, [page, search, selectedStatus]);
+    }, [page, search, selectedStatus, selectedSchoolYear]);
 
     useEffect(() => {
         fetchStatusTotal();
-    }, [search]);
+    }, [search, selectedSchoolYear]);
     
     useEffect(() => {
         if (searchTerm.length < 1) return;
@@ -124,7 +127,7 @@ const Students = () => {
             try {
                 const authToken = localStorage.getItem("token");
                 const response = await axios.get('/api/students/search', {
-                    params: { search : searchTerm },
+                    params: { search : searchTerm, schoolYear : selectedSchoolYear },
                     headers: { Authorization: `Bearer ${authToken}` },
                 });
                 setStudentSuggestions(response.data);
@@ -163,7 +166,7 @@ const Students = () => {
         try {
             const authToken = localStorage.getItem("token");
             const response = await axios.get('/api/students', {
-                params: { page, search, status },
+                params: { page, search, status, schoolYear: selectedSchoolYear },
                 headers: { Authorization: `Bearer ${authToken}` },
             });
             setStudents(response.data.data);
@@ -172,6 +175,19 @@ const Students = () => {
             // toastr.error('Failed to load students');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchSchoolYears = async () => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const response = await axios.get('/api/schoolYears/lists', {
+                headers: { Authorization: `Bearer ${authToken}` },
+            });
+            setSchoolYears(response.data.data);
+        } catch (error) {
+            toastr.error('Failed to load school years');
+            setSchoolYears([]);
         }
     };
 
@@ -186,6 +202,7 @@ const Students = () => {
             const response = await axios.get(`/api/students/status-total`, {
                 params: {
                     search: search,
+                    schoolYear: selectedSchoolYear
                 },
                 headers: { Authorization: `Bearer ${authToken}` },
             });
@@ -398,7 +415,7 @@ const Students = () => {
                 </div>
                 
                 <div>
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4">
                         {/* Search Input */}
                         <input
                             type="text"
@@ -407,6 +424,18 @@ const Students = () => {
                             onChange={handleSearch}
                             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <select 
+                            value={selectedSchoolYear}
+                            onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All School Year</option>
+                            {schoolYears.map((sy) => (
+                                <option key={sy.id} value={sy.id}>
+                                    S.Y. {sy.sy_from}-{sy.sy_to}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm text-left border-collapse border border-gray-300">
