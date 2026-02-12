@@ -30,7 +30,9 @@ class SendSmsJob implements ShouldQueue
     {
         //run php artisan queue:work database
 
-        $pythonPath = 'C:\Users\User\Desktop\cesar\Python\.venv\Scripts\python.exe';
+        //$pythonPath = 'C:\Users\User\Desktop\cesar\Python\.venv\Scripts\python.exe';
+
+        $pythonPath = config('app.python_path', 'python');
 
         $scriptPath = base_path('storage/app/private/python/send_sms.py');
 

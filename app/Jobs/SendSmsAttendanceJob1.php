@@ -31,7 +31,7 @@ class SendSmsAttendanceJob1 implements ShouldQueue
     {
         //run php artisan queue:work database
 
-        $pythonPath = 'C:\Users\User\Desktop\cesar\Python\.venv\Scripts\python.exe';
+        $pythonPath = config('app.python_path', 'python');
 
         $deviceSequence = DeviceSequence::first();
 
