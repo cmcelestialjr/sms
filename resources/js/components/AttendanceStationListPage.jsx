@@ -20,7 +20,7 @@ const AttendanceStationListPage = () => {
   };
 
   const handleStationClick = (stationId) => {
-    navigate(`/attendance/${stationId}`);
+    navigate(`/attendance/rfid/${stationId}`);
   };
 
   return (

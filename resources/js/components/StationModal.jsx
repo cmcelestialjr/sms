@@ -11,6 +11,7 @@ const StationModal = ({ show, onClose, onSave, station }) => {
             setStationData({
                 station_name: station.station_name,
                 location: station.location,
+                ipaddress: station.ipaddress,
             });
         }
     }, [station]);
@@ -58,6 +59,16 @@ const StationModal = ({ show, onClose, onSave, station }) => {
                             onChange={handleChange}
                             className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
+                        />
+                    </div>
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium mb-2 text-gray-700">IP Address</label>
+                        <input
+                            type="text"
+                            name="ipaddress"
+                            value={stationData.ipaddress || ''}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                     <div className="flex justify-end space-x-4">

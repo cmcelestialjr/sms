@@ -33,7 +33,7 @@ function RouterApp() {
           element={<Login />} 
         />
 
-        <Route path="/attendance" 
+        <Route path="/stations" 
           element={<AttendanceStationListPage />}
         />
 
@@ -84,7 +84,7 @@ function RouterApp() {
           </ProtectedRoute>}
         />
 
-        <Route path="/stations" 
+        <Route path="/station-list" 
           element={
           <ProtectedRoute allowedRoles={["1","2","3"]}>
             <Stations />

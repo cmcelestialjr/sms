@@ -23,9 +23,10 @@ Route::post('/login', [AuthController::class, 'login']);
 // For Attendance Scanning
 Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
 Route::post('/attendance/scan/qr', [AttendanceController::class, 'scanQr']);
-Route::get('/attendances', [AttendanceController::class, 'index']);
+Route::get('/attendances/recent', [AttendanceController::class, 'recentAttendances']);
 Route::get('/attendance/count', [AttendanceController::class, 'count']);
 
+Route::get('/attendance/rfid/{id}', [StationController::class, 'show']);
 
 //For Managing Stations
 Route::get('/stations', [StationController::class, 'index']);
@@ -62,6 +63,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/students/status-total', [StudentController::class, 'statusTotal']);
     Route::post('/students/approved/request', [StudentController::class, 'approved']);
 
+    Route::get('/station-list', [StationController::class, 'index']);
     Route::get('/stations-lists', [StationController::class, 'lists']);
     Route::post('/stations', [StationController::class, 'store']);
     Route::put('/stations/{id}', [StationController::class, 'update']);

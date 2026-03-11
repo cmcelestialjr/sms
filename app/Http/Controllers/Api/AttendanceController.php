@@ -9,6 +9,7 @@ use App\Jobs\SendSmsAttendanceJob1;
 use App\Models\Absence;
 use App\Models\Attendance;
 use App\Models\AttendanceDailySummary;
+use App\Models\Device;
 use App\Models\DeviceSequence;
 use App\Models\SchoolInfo;
 use App\Models\SchoolYear;
@@ -19,6 +20,7 @@ use App\Services\SchoolYearServices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -183,38 +185,267 @@ class AttendanceController extends Controller
 
     public function scan(Request $request)
     {
-        return $this->handleScan($request,'rfid');
+        $request->validate([
+            'id' => 'required|numeric|min:1|exists:stations,id',
+            'code' => 'required|string',
+        ]);
+        
+        $code = $request->code;
+        $id = $request->id;
+        
+        $station = Station::find($id);
+
+        if(!$station){
+            return response()->json(['success' => false, 'message' => 'Station not found.'], 404);
+        }
+
+        $stationIp = $request->ipaddress;
+        $deviceId = $station->uuid;
+
+        return $this->handleScan($deviceId, $stationIp, 'rfid', $code);
     }
 
     public function scanQr(Request $request)
     {
-        return $this->handleScan($request,'qr');
-    }
-
-    private function handleScan($request,$typeScan)
-    {
         $request->validate([
-            'id' => 'required|integer',
-            'code' => 'required',
-            'api_key' => 'required|string',
+            'qr_code' => 'required',
         ]);
 
-        // if ($request->api_key !== env('ATTENDANCE_API_KEY')) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Unauthorized access. Invalid API key.',
-        //     ], 403);
-        // }
+        $qr_code = $request->qr_code;
+        $appKey = $request->header('X-APP-KEY');
+        $deviceId = $request->header('X-DEVICE-ID');
+        $stationIp = $request->header('X-STATION-IP');
 
-        // Find the station by IP address
-        $station = Station::find($request->id);
+        if ($appKey !== env('ATTENDANCE_API_KEY')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access.'], 403);
+        }
+        if (!$deviceId) {
+            return response()->json(['success' => false, 'message' => 'Device ID missing.'], 410);
+        }
+        if (!$stationIp) {
+            return response()->json(['success' => false, 'message' => 'Station IP missing.'], 411);
+        }
 
-        if (!$station) {
+        return $this->handleScan($deviceId, $stationIp, 'qr', $qr_code);
+    }
+
+    private function handleScan($deviceId, $stationIp, $typeScan, $code)
+    {
+        try {
+            // Start the Database Transaction
+            return DB::transaction(function () use ($deviceId, $stationIp, $typeScan, $code) {
+                
+                // 1. Station Management
+                $station = Station::firstOrCreate(
+                    ['uuid' => $deviceId],
+                    [
+                        'station_name' => 'Station - ' . $deviceId,
+                        'ipaddress' => $stationIp,
+                        'location' => 'Unknown',
+                    ]
+                );
+
+                $method = $typeScan;
+                
+                // 2. Student Lookup
+                $student = Student::where($method === 'qr' ? 'qr_code' : 'rfid_tag', $code)->first();
+                if (!$student) {
+                    return response()->json(['success' => false, 'message' => 'Student not found.'], 300);
+                }
+
+                // 3. Global Duplicate Check (Removed station constraint to check across all devices)
+                $recentScan = Attendance::where('student_id', $student->id)
+                    ->where('scanned_at', '>=', Carbon::now()->subMinutes(30))
+                    ->first();
+
+                if ($recentScan) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Duplicate scan detected. Please wait 30 minutes before scanning again.',
+                    ], 409);
+                }
+
+                $scanned_at = now();
+
+                // 4. Update Student
+                // $student = $this->updateStudent($student);
+                
+                // 5. Get Attendance Type Data
+                $getType = $this->getType($student, $scanned_at);
+                
+                // 6. Record Attendance
+                $createAttendance = Attendance::create([
+                    'student_id' => $student->id,
+                    'station_id' => $station->id,
+                    'type' => $getType['type'],
+                    'method' => $method,
+                    'status' => $getType['result'],
+                    'message' => $getType['message'],
+                    'scanned_at' => $scanned_at,
+                    'school_year_id' => $student->school_year_id,
+                    'sy_from' => $student->sy_from,
+                    'sy_to' => $student->sy_to,
+                    'level' => $student->level,
+                    'grade' => $student->grade,
+                    'section' => $student->section,
+                    'teachers_id' => $student->teachers_id
+                ]);
+
+                // 7. Update Daily Summary
+                $this->updateDailySummary($scanned_at, $student->id, $getType['type'], $student); 
+
+                // 8. Prepare Return Data & Formatting
+                $createAttendance->setRelation('student', $student);
+                $attendance = $createAttendance;
+
+                if ($attendance->student->photo) {
+                    $attendance->student->photo = $attendance->student->photo
+                        ? asset("storage/{$attendance->student->photo}") 
+                        : asset('images/no-image-icon.png');
+                }
+
+                dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');
+
+                $this->sendSmsAttendance($attendance, $getType['message_type'], $scanned_at);
+
+                // SMS Logic omitted for brevity, but it is safe here...
+                
+                // 9. Commit Transaction and Return Success
+
+                $attendances = [];
+
+                if($method == 'rfid'){
+                    $attendances = $this->fetchRecentAttendances($station->id, $scanned_at);
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Successful!',
+                    'student' => $attendance,
+                    'attendances' => $attendances
+                ]);
+            }); // End of DB::transaction
+
+        } catch (\Exception $e) {
+            // Return a clean JSON response to the scanning device
             return response()->json([
                 'success' => false,
-                'message' => 'Station not registered.',
-            ]);
+                'message' => 'An internal server error occurred while processing the scan.',
+                // 'error' => $e->getMessage() // You can uncomment this in local development, but hide it in production
+            ], 500);
         }
+    }
+
+    public function recentAttendances(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|numeric|min:1|exists:stations,id',
+            'timeNow' => 'required|string',
+        ]);
+
+        $stationId = $request->id;
+        $timeNow = $request->timeNow;
+
+        $attendances = $this->fetchRecentAttendances($stationId, $timeNow);
+
+        return response()->json($attendances);
+    }
+
+    private function fetchRecentAttendances($stationId, $scanned_at)
+    {
+        $attendances = Attendance::with('student')
+                        ->where('station_id', $stationId)
+                        ->whereDate('scanned_at',date('Y-m-d',strtotime($scanned_at)))
+                        ->orderBy('scanned_at','DESC')
+                        ->limit(5)
+                        ->get();
+        return $attendances;
+    }
+
+    private function sendSmsAttendance($attendance, $message_type, $scanned_at)
+    {
+        $schoolName = 'Leyte Normal University';
+        $student = $attendance->student;
+
+        $lastname = mb_strtoupper($student->lastname);
+        $firstname = mb_strtoupper($student->firstname);
+        $middleInitial = !empty($student->middlename) ? mb_strtoupper(mb_substr($student->middlename, 0, 1)) . "." : '';
+        $extname = !empty($student->extname) ? mb_strtoupper($student->extname) : '';
+
+        $name = trim("$lastname, $firstname $extname $middleInitial");
+        
+        $formattedTime = date('h:i:s A', strtotime($scanned_at));
+        $formattedDate = date('M d, Y', strtotime($scanned_at));
+        $message = "{$name} {$message_type} in {$schoolName} at {$formattedTime} on {$formattedDate}";
+        
+        // Optional: Only if your SMS gateway cannot handle spaces
+        // $message = str_replace(" ", "_", $message);
+
+        // 3. Round-Robin Device Selection
+        $devices = Device::get();
+
+        if ($devices->isNotEmpty()) {
+            $deviceCount = $devices->count();
+
+            // Increment a counter in the cache indefinitely
+            // atomic increment prevents two scans from getting the same "turn"
+            $currentTurn = Cache::increment('sms_device_turn');
+
+            // Use Modulo (%) to pick the index (0, 1, 2, 0, 1, 2...)
+            $deviceIndex = $currentTurn % $deviceCount;
+            $selectedDevice = $devices[$deviceIndex];
+
+            // 4. Dispatch Job
+            dispatch(new SendSmsAttendanceJob(
+                $attendance->id, 
+                $student->contact_no, 
+                $message, 
+                $selectedDevice->name
+            ))->onQueue('gsmAttendance');
+        }
+    }
+
+    private function handleScan1($request, $typeScan)
+    {
+        $request->validate([
+            'qr_code' => 'required',
+        ]);
+
+        $qr_code = $request->qr_code;
+        $appKey = $request->header('X-APP-KEY');
+        $deviceId = $request->header('X-DEVICE-ID');     
+        $stationIp = $request->header('X-STATION-IP');
+    
+        if ($appKey !== env('ATTENDANCE_API_KEY')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access. Invalid API key.',
+            ], 403);
+        }
+
+        if (!$deviceId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Device ID missing.',
+            ], 410);
+        }
+
+        if(!$stationIp){
+            return response()->json([
+                'success' => false,
+                'message' => 'Station IP missing.',
+            ], 411);
+        }       
+
+        // Find the station by IP address
+        $station = Station::firstOrCreate(
+            ['uuid' => $deviceId],
+            [
+                'station_name' => 'Station - ' . $deviceId,
+                'ipaddress' => $stationIp,
+                'location' => 'Unknown',
+            ]
+        );
 
         // Detect method based on code
         // $method = str_starts_with($request->code, 'qr-') ? 'qr' : 'rfid';
@@ -223,22 +454,21 @@ class AttendanceController extends Controller
         // $searchCode = $method === 'qr' ? substr($request->code, 3)  : $request->code;
 
         $method = $typeScan;
-        $scannedData = $request->code;
-        $searchCode = $typeScan=='qr' ? $scannedData[0]['rawValue'] ?? null : $scannedData;
+        $scannedData = $qr_code;
+        //$searchCode = $typeScan=='qr' ? $scannedData[0]['rawValue'] ?? null : $scannedData;
         
         // Find the student
-        $student = Student::where($method === 'qr' ? 'qr_code' : 'rfid_tag', $searchCode)->first();
+        $student = Student::where($method === 'qr' ? 'qr_code' : 'rfid_tag', $qr_code)->first();
 
         if (!$student) {
             return response()->json([
                 'success' => false,
                 'message' => 'Student not found.',
-            ]);
+            ], 300);
         }
 
         // Check for duplicate scan within 30 minutes
         $recentScan = Attendance::where('student_id', $student->id)
-            ->where('station_id', $station->id)
             ->where('scanned_at', '>=', Carbon::now()->subMinutes(30))
             ->first();
 
@@ -246,7 +476,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Duplicate scan detected. Please wait 30 minutes before scanning again.',
-            ]);
+            ], 409);
         }
 
         $scanned_at = now();
@@ -279,7 +509,7 @@ class AttendanceController extends Controller
             'teachers_id' => $student->teachers_id
         ]);
 
-        $this->updateDailySummary($scanned_at, $student_id, $type, $student);        
+        $this->updateDailySummary($scanned_at, $student_id, $type, $student); 
 
         $attendance = Attendance::with('student')->where('id',$createAttendance->id)->first();
         $shoolInfo = SchoolInfo::first();
@@ -307,7 +537,7 @@ class AttendanceController extends Controller
         
         $message = str_replace(" ","_",$message);
 
-        dispatch(new SendSmsAttendanceJob($target_id, $contact_no, $message))->onQueue('gsmAttendance');
+        //dispatch(new SendSmsAttendanceJob($target_id, $contact_no, $message))->onQueue('gsmAttendance');
 
         // $deviceSequence = DeviceSequence::first();
 
@@ -335,7 +565,7 @@ class AttendanceController extends Controller
         // $updateDeviceSequence->name = $deviceName;
         // $updateDeviceSequence->save();
 
-        dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');
+        //dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');
 
         // $attendances = Attendance::with('student')
         //     ->whereNotIn('id',[$createAttendance->id])
@@ -357,7 +587,6 @@ class AttendanceController extends Controller
             'success' => true,
             'message' => 'Successful!',
             'student' => $attendance,
-            'attendances' => $attendances
         ]);
     }
 
@@ -369,32 +598,69 @@ class AttendanceController extends Controller
     private function updateStudent($student)
     {
         $getSchoolYear = $this->schoolYearServices->getSchoolYear();
-        $school_year_id = $getSchoolYear['school_year_id'];
-        $sy_from = $getSchoolYear['sy_from'];
-        $sy_to = $getSchoolYear['sy_to'];
+        
+        $schoolYearData = [
+            'school_year_id' => $getSchoolYear['school_year_id'],
+            'sy_from'        => $getSchoolYear['sy_from'],
+            'sy_to'          => $getSchoolYear['sy_to'],
+        ];
 
-        $student = Student::find($student->id);
-        $student->school_year_id = $school_year_id;
-        $student->sy_from = $sy_from;
-        $student->sy_to = $sy_to;
+        // 1. Update the student directly (No need to re-query)
+        $student->school_year_id = $schoolYearData['school_year_id'];
+        $student->sy_from = $schoolYearData['sy_from'];
+        $student->sy_to = $schoolYearData['sy_to'];
         $student->status = 'Active';
         $student->save();
-        
-        $teacher = Teacher::where('user_id',$student->teachers_id)
-            ->first();
-
-        if($teacher!=null){
-            $teacher = Teacher::find($teacher->id);
-            $teacher->school_year_id = $school_year_id;
-            $teacher->sy_from = $sy_from;
-            $teacher->sy_to = $sy_to;
-            $teacher->save();
-        }
-        
+                
         return $student;
     }
 
-    private function getType($student,$scanned_at)
+    private function getType($student, $scanned_at)
+    {
+        $date = date('Y-m-d', strtotime($scanned_at));
+
+        // Get all today's logs for this student in one go
+        $todayLogs = Attendance::where('student_id', $student->id)
+            ->whereDate('scanned_at', $date)
+            ->orderBy('scanned_at', 'DESC')
+            ->get();
+
+        $count = $todayLogs->count();
+        $lastLog = $todayLogs->first();
+
+        // 1. Check for max logs first
+        if ($count >= 4) {
+            return [
+                'result' => 'error', // This should be handled in handleScan to block the save
+                'type' => 'Out',
+                'message' => 'Maximum daily logs reached (4/4).',
+                'message_type' => "has EXCEEDED logs"
+            ];
+        }
+
+        // 2. If no logs, it's always an "In"
+        if (!$lastLog) {
+            return [
+                'result' => 'success',
+                'type' => 'In',
+                'message' => 'Success!',
+                'message_type' => "has LOGGED IN"
+            ];
+        }
+
+        // 3. Toggle type based on the last log
+        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';
+        $msgType = ($newType === 'In') ? "has LOGGED IN" : "has LOGGED OUT";
+
+        return [
+            'result' => 'success',
+            'type' => $newType,
+            'message' => 'Success!',
+            'message_type' => $msgType
+        ];
+    }
+
+    private function getType1($student,$scanned_at)
     {
         $todayScan = Attendance::where('student_id', $student->id)
             ->whereDate('scanned_at',date('Y-m-d',strtotime($scanned_at)))
@@ -443,6 +709,85 @@ class AttendanceController extends Controller
     }
 
     private function updateDailySummary($scanned_at, $student_id, $type, $student)
+    {
+        $scannedAt = Carbon::parse($scanned_at);
+        $dateSummary = $scannedAt->toDateString(); // Y-m-d
+        $timeOnly = $scannedAt->toTimeString();   // H:i:s
+
+        // 1. Use updateOrCreate to prevent duplicate records for the same day/student.
+        // This handles the "if exists update, else create" logic atomically.
+        $summary = AttendanceDailySummary::updateOrCreate(
+            [
+                'student_id' => $student_id,
+                'date'       => $dateSummary,
+            ],
+            [
+                // These fields are updated every time a scan occurs to ensure they are current
+                'school_year_id' => $student->school_year_id,
+                'sy_from'        => $student->sy_from,
+                'sy_to'          => $student->sy_to,
+                'level'          => $student->level,
+                'grade'          => $student->grade,
+                'section'        => $student->section,
+                'teachers_id'    => $student->teachers_id,
+                // Default fields (can be modified based on logic later)
+                'is_late'        => 0,  // default value, will be updated based on conditions
+                'is_undertime'   => 0,  // default value, will be updated based on conditions
+                'is_excused'     => 0,  // default value, will be updated based on conditions
+            ]
+        );
+
+        // 2. Determine which time slot to fill (actual_in/out)
+        $updateData = [];
+
+        // Set actual AM/PM In or Out based on the time scanned
+        if ($type === 'In') {
+            if ($timeOnly <= '11:30:00') {
+                $updateData['actual_am_in'] = $timeOnly;
+            } else {
+                $updateData['actual_pm_in'] = $timeOnly;
+            }
+        } else {
+            if ($timeOnly <= '13:30:00' && empty($summary->actual_am_out)) {
+                $updateData['actual_am_out'] = $timeOnly;
+            } else {
+                $updateData['actual_pm_out'] = $timeOnly;
+            }
+        }
+
+        // 3. Handle 'is_late', 'is_undertime', 'is_excused'
+        // Only update these fields if they have not been manually set by the teacher
+        if ($type === 'In') {
+            // If the student scans after 8:00 AM, mark them late (but only if not manually set to 1)
+            if ($summary->is_late === 0 && $timeOnly > '08:00:00') {
+                // If the student scans after 8:00 AM and is still set to the default (0), mark them as late
+                $updateData['is_late'] = 1;
+            }
+        }
+
+        // Prevent overwriting of manually set "late" status
+        if ($summary->is_late === 1) {
+            // If the student was manually marked as late (is_late = 1), do not override it
+            unset($updateData['is_late']);
+        }
+
+        if ($summary->is_excused === 1) {
+            // If the student was manually marked as excused (is_excused = 1), do not override it
+            unset($updateData['is_excused']);
+        }
+
+        if ($summary->is_undertime === 1) {
+            // If the student was manually marked as undertime (is_undertime = 1), do not override it
+            unset($updateData['is_undertime']);
+        }
+
+        // 4. Only update the specific time column or status flags if needed
+        if (!empty($updateData)) {
+            $summary->update($updateData);
+        }
+    }
+
+    private function updateDailySummary1($scanned_at, $student_id, $type, $student)
     {
         $dateSummary = date('Y-m-d', strtotime($scanned_at));
 

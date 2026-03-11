@@ -10,10 +10,13 @@ return new class extends Migration
     {
         Schema::create('stations', function (Blueprint $table) {
             $table->id();
-            $table->string('station_name');
+            $table->string('station_name')->index();
             $table->string('ipaddress')->unique();
             $table->string('location')->nullable();
+            $table->tinyInteger('is_mobile')->index()->nullable();
             $table->timestamps();
+
+            $table->index(['ipaddress', 'location']);
         });
     }
 

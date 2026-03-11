@@ -19,23 +19,36 @@ class SendSmsAttendanceJob implements ShouldQueue
     protected $target_id;
     protected $contact_no;
     protected $message;
+    protected $send_sms_attendance;
 
-    public function __construct($target_id, $contact_no, $message)
+    public function __construct($target_id, $contact_no, $message, $send_sms_attendance)
     {
         $this->target_id = $target_id;
         $this->contact_no = preg_replace('/^0/', '+63', $contact_no);
         $this->message = $message;
+        $this->send_sms_attendance = $send_sms_attendance;
     }
 
     public function handle(): void
     {
         //run php artisan queue:work database
 
-        //$pythonPath = 'C:\Users\User\Desktop\cesar\Python\.venv\Scripts\python.exe';
+        //$pythonPath = 'C:\Users\User\Desktop\cesar\Python\.venv\Scripts\python.exe';        
 
         $pythonPath = config('app.python_path', 'python');
 
-        $scriptPath = base_path('storage/app/private/python/send_sms_attendance.py');        
+        if($this->send_sms_attendance == 'COM3') {
+            $scriptPath = base_path('storage/app/private/python/send_sms_attendance.py');        
+        } else if($this->send_sms_attendance == 'COM4') {
+            $scriptPath = base_path('storage/app/private/python/send_sms_attendance_1.py');    
+        } else if($this->send_sms_attendance == 'COM5') {
+            $scriptPath = base_path('storage/app/private/python/send_sms_attendance_2.py');    
+        } else if($this->send_sms_attendance == 'COM6') {
+            $scriptPath = base_path('storage/app/private/python/send_sms_attendance_3.py');    
+        } else {
+            Log::error("Invalid COM port specified for SendSmsAttendanceJob: {$this->send_sms_attendance}");
+            return;
+        }
 
         $process = Process::run("{$pythonPath} {$scriptPath} {$this->contact_no} \"" . escapeshellarg($this->message) . "\"");
         
@@ -46,6 +59,6 @@ class SendSmsAttendanceJob implements ShouldQueue
             $status = 'Error';
         }
         $update->message_status = $status;
-        $update->save();        
+        $update->save();
     }
 }

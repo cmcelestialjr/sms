@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Station;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class StationController extends Controller
 {
@@ -49,11 +50,21 @@ class StationController extends Controller
         $request->validate([
             'station_name' => 'required|string|max:255',
             'location' => 'required|string|max:255',
+            'ipaddress' => 'nullable|ip',
         ]);
 
+        if($request->ipaddress == null || $request->ipaddress == ''){
+            $ipaddress = request()->ip();
+            $request->merge(['ipaddress' => $ipaddress]);
+        }
+
+        $uuid = (string) Str::uuid();
+
         $station = Station::create([
+            'uuid' => $uuid,
             'station_name' => $request->station_name,
             'location' => $request->location,
+            'ipaddress' => $request->ipaddress,
         ]);
 
         return response()->json($station, 201);
@@ -70,11 +81,18 @@ class StationController extends Controller
         $request->validate([
             'station_name' => 'required|string|max:255',
             'location' => 'required|string|max:255',
+            'ipaddress' => 'nullable|ip',
         ]);
+
+        if($request->ipaddress == null || $request->ipaddress == ''){
+            $ipaddress = request()->ip();
+            $request->merge(['ipaddress' => $ipaddress]);
+        }
 
         $station->update([
             'station_name' => $request->station_name,
             'location' => $request->location,
+            'ipaddress' => $request->ipaddress,
         ]);
 
         return response()->json($station);

@@ -143,9 +143,9 @@ const Sidebar = () => {
                 </li>              
                 <li>
                   <Link
-                    to="/stations"
+                    to="/station-list"
                     className={`flex items-center p-2 rounded transition ${
-                      isActive("/stations") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                      isActive("/station-list") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
                     }`}
                   >
                     <MapPin size={20} className="mr-2" />

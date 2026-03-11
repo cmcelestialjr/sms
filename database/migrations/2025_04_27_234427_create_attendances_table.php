@@ -12,14 +12,14 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('student_id')->index();
             $table->unsignedBigInteger('station_id')->index();
-            $table->timestamp('scanned_at')->useCurrent();
+            $table->timestamp('scanned_at')->useCurrent()->index();
             $table->enum('type', ['In', 'Out'])->index();
             $table->enum('method', ['qr', 'rfid']);
             $table->enum('status', ['success', 'error'])->index();
             $table->string('message');
             $table->unsignedBigInteger('school_year_id')->nullable()->index();
             $table->year('sy_from')->index();
-            $table->year('sy_to')->index();
+            $table->year('sy_to');
             $table->enum('level', ['Kinder', 'Elementary', 'Junior High School', 'Senior High School'])->index();
             $table->string('grade')->index();
             $table->string('section')->index();

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('name')->index();
             $table->string('lastname');
             $table->string('firstname');
             $table->string('extname')->nullable();
@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('email')->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->unsignedTinyInteger('role_id')->nullable();
+            $table->unsignedTinyInteger('role_id')->nullable()->index();
             $table->longText('photo')->nullable();
             // $table->foreign('role_id')->references('id')->on('roles')->onDelete('set null');
             $table->rememberToken();

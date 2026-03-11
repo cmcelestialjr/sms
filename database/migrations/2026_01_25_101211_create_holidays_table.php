@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name')->index();
             $table->date('date_from')->index();
             $table->date('date_to')->index();
-            $table->enum('type', ['Regular', 'Special'])->index();
+            $table->enum('type', ['Regular', 'Special', 'Suspension'])->index();
             $table->enum('repeat', ['Yes', 'No'])->index();
             $table->enum('half_day', ['', 'am', 'pm'])->index();
             $table->unsignedBigInteger('updated_by')->index()->nullable();

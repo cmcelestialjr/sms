@@ -10,6 +10,7 @@ class Station extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'station_name',
         'ipaddress',
         'location',

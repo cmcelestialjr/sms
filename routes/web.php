@@ -42,6 +42,10 @@ Route::get('/stations-lists/{any?}', function () {
     return view('app');
 })->where('any', '.*');
 
+Route::get('/station-list/{any?}', function () {
+    return view('app');
+})->where('any', '.*');
+
 Route::get('/stations/{any?}', function () {
     return view('app');
 })->where('any', '.*');

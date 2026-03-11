@@ -58,9 +58,9 @@ class Sf2Controller extends Controller
 
         if($userRole == 1){
             if(!empty($teacher)){
-                $teacher_id = $teacher['user_id'];
-                $grade = $teacher['grade'];
-                $section = $teacher['section'] ? $teacher['section'] : 'NONE';
+                $teacher_id = $teacher['id'];
+                $grade = $teacher['teacher']['grade'];
+                $section = $teacher['teacher']['section'] ? $teacher['teacher']['section'] : 'NONE';
             }
         }
 
@@ -394,13 +394,12 @@ class Sf2Controller extends Controller
         }
 
         $x_add_value = 155 / $total_days;        
-
+        $total_male_present = 0;
+        $total_male_absent = 0;
         // --- 4. Loop Through MALE Students ---
         if ($male_total > 0) {            
 
             $student_index = 0;
-            $total_male_absent = 0;
-            $total_male_present = 0;
             $consecutive_5_absence_male = 0;
             foreach ($male_students as $student) {
                 $student_attendance = $attendance_records->get($student->id, collect());
@@ -450,11 +449,11 @@ class Sf2Controller extends Controller
                 $male_total, $total_male_absent, $total_male_present); 
         }
 
+        $total_female_absent = 0;
+        $total_female_present = 0;
         // --- 5. Loop Through FEMALE Students ---
         if ($female_total > 0) {           
-            $student_index = 0;
-            $total_female_absent = 0;
-            $total_female_present = 0;
+            $student_index = 0;            
             $consecutive_5_absence_female = 0;
             foreach ($female_students as $student) {
                 $student_attendance = $attendance_records->get($student->id, collect());
@@ -502,6 +501,12 @@ class Sf2Controller extends Controller
 
         $combined_total = $male_total + $female_total;
         if($combined_total > 0){
+
+            if ($y >= 97) {
+                $pdf->AddPage();
+                $y = 5;
+            }
+
             $total_present_per_day = $total_male_present + $total_female_present;
             $total_absent_per_day = $total_male_absent + $total_female_absent;
 
@@ -694,7 +699,7 @@ class Sf2Controller extends Controller
         $school_head, $month_name, $school_year_date_from, &$enrollmentStats)
     {
         // Page break logic
-        if ($y > 195) {
+        if ($y >= 97) {
             $pdf->AddPage();
             $y = 5;
         }

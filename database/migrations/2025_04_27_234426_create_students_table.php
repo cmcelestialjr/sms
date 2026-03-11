@@ -26,7 +26,7 @@ return new class extends Migration
             $table->longText('photo')->nullable();
             $table->unsignedBigInteger('school_year_id')->nullable()->index();
             $table->year('sy_from')->index();
-            $table->year('sy_to')->index();
+            $table->year('sy_to');
             $table->enum('level', ['Kinder', 'Elementary', 'Junior High School', 'Senior High School'])->index();
             $table->string('grade')->index();
             $table->string('section')->index();
@@ -42,6 +42,8 @@ return new class extends Migration
             $table->foreign('teacher_id_pending')->references('id')->on('users')->onDelete('set null');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
             $table->timestamps();
+
+            $table->index(['lastname', 'firstname', 'middlename']);
         });
     }
 
