@@ -837,23 +837,23 @@ const Students = () => {
                                     <div className="flex flex-col">
                                         <label className="text-sm font-medium text-gray-700 mb-1">Teacher</label>
                                         <input
-                                        type="text"
-                                        placeholder="Type name"
-                                        value={searchTeacherTerm}
-                                        onChange={(e) => setSearchTeacherTerm(e.target.value)}
-                                        className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required
+                                            type="text"
+                                            placeholder="Type name"
+                                            value={searchTeacherTerm}
+                                            onChange={(e) => setSearchTeacherTerm(e.target.value)}
+                                            className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
                                         />
                                         {teacherSuggestions.length > 0 && (
                                         <ul className="border border-gray-300 rounded-lg mt-1 max-h-48 overflow-y-auto bg-white z-10 relative">
                                             {teacherSuggestions.map((teacher) => (
                                             <li
-                                                key={teacher.user_id}
+                                                key={teacher.id}
                                                 onClick={() => {
-                                                setStudentForm({ ...studentForm, teachers_id: teacher.user_id })
-                                                setSelectedTeacherSuggestion(teacher);
-                                                setSearchTeacherTerm(`${teacher.lastname}, ${teacher.firstname} ${teacher.extname || ''} ${teacher.middlename || ''}`);
-                                                setTeacherSuggestions([]);
+                                                    setStudentForm({ ...studentForm, teachers_id: teacher.id })
+                                                    setSelectedTeacherSuggestion(teacher);
+                                                    setSearchTeacherTerm(`${teacher.lastname}, ${teacher.firstname} ${teacher.extname || ''} ${teacher.middlename || ''}`);
+                                                    setTeacherSuggestions([]);
                                                 }}
                                                 className="p-2 hover:bg-gray-100 cursor-pointer"
                                             >

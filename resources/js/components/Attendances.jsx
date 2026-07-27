@@ -9,9 +9,10 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import AttendanceLists from "./AttendanceLists";
 import AttendanceCalendar from "./AttendanceCalendar";
+import AttendanceClassView from "./AttendanceClassView";
 
 const Attendances = () => {
-    const [activeTab, setActiveTab] = useState("Lists");
+    const [activeTab, setActiveTab] = useState("Class View");
     
 
     const didFetch = useRef(false);
@@ -27,7 +28,7 @@ const Attendances = () => {
             <div className="w-full mt-11 mx-auto">
                 {/* Tabs */}
                 <div className="mt-16 flex gap-4 mb-4">
-                {["Lists", "Calendar"].map((tab) => (
+                {["Class View", "Lists", "Calendar"].map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -42,7 +43,8 @@ const Attendances = () => {
                 ))}
                 </div>
 
-                {activeTab === "Lists" && <AttendanceLists />}
+                {activeTab === "Class View" && <AttendanceClassView />}
+                {activeTab === "Lists" && <AttendanceLists />}                
                 {activeTab === "Calendar" && <AttendanceCalendar />}
                 
             </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\AbsencesJob;
+use App\Jobs\AttendanceEmailJob;
 use App\Jobs\SendSmsAttendanceJob;
 use App\Jobs\SendSmsAttendanceJob1;
 use App\Models\Absence;
@@ -13,6 +14,7 @@ use App\Models\Device;
 use App\Models\DeviceSequence;
 use App\Models\SchoolInfo;
 use App\Models\SchoolYear;
+use App\Models\SmsQueue;
 use App\Models\Student;
 use App\Models\Station;
 use App\Models\Teacher;
@@ -183,6 +185,72 @@ class AttendanceController extends Controller
         ]);
     }
 
+    public function classRoster(Request $request)
+    {
+        $validated = $request->validate([
+            'schoolYear' => 'required|numeric|exists:school_years,id',
+            'year' => 'required|numeric',
+            'month' => 'required|numeric',
+            'search' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $schoolYear = $validated['schoolYear'];
+        $year = $validated['year'];
+        $month = $validated['month'];
+        $search = $validated['search'] ?? null;
+        
+        $query = Student::with(['attendances' => function ($query) use ($year, $month, $schoolYear) {
+                    $query->whereYear('scanned_at', $year)
+                        ->whereMonth('scanned_at', $month)
+                        ->where('school_year_id', $schoolYear);
+                }
+            ])
+            ->with(['attendanceDailySummary' => function ($query) use ($year, $month, $schoolYear) {
+                    $query->whereYear('date', $year)
+                        ->whereMonth('date', $month)
+                        ->where('school_year_id', $schoolYear);
+                }
+            ])
+            ->with(['absences' => function ($query) use ($year, $month) 
+                {
+                    $query->whereYear('date', $year)
+                        ->whereMonth('date', $month);
+                }
+            ])
+            ->whereHas('schoolYearStudents', function ($q) use ($schoolYear) {
+                $q->where('school_year_id', $schoolYear);
+            });
+
+        // Filter by the logged-in teacher (Assuming role_id 3 is Teacher based on your lists() method)
+        if ($user->role_id == 3) {
+            $query->where('teachers_id', $user->id);
+        }
+
+        // Apply Search
+        if (!empty($search)) {
+            $query->where(function ($query) use ($search) {
+                $query->where('student_id', 'LIKE', "%{$search}%");
+                $query->orWhere('lastname', 'LIKE', "%{$search}%");
+                $query->orWhere('firstname', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Use paginate(100) instead of get() to set a hard limit per view
+        $students = $query
+            ->orderBy('lastname','ASC')
+            ->orderBy('firstname','ASC')
+            ->paginate(100); 
+        
+        // Pagination natively wraps the results in a 'data' array
+        return response()->json($students);
+    }
+
     public function scan(Request $request)
     {
         $request->validate([
@@ -288,7 +356,9 @@ class AttendanceController extends Controller
                     'level' => $student->level,
                     'grade' => $student->grade,
                     'section' => $student->section,
-                    'teachers_id' => $student->teachers_id
+                    'teachers_id' => $student->teachers_id,
+                    'message_status' => 'Pending',
+                    'email_status' => 'Pending'
                 ]);
 
                 // 7. Update Daily Summary
@@ -304,13 +374,54 @@ class AttendanceController extends Controller
                         : asset('images/no-image-icon.png');
                 }
 
-                dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');
+                dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');                
 
-                $this->sendSmsAttendance($attendance, $getType['message_type'], $scanned_at);
+                // $this->sendSmsAttendance($attendance, $getType['message_type'], $scanned_at);
 
                 // SMS Logic omitted for brevity, but it is safe here...
                 
                 // 9. Commit Transaction and Return Success
+
+                $message_type = $getType['message_type'];
+
+                $shoolInfo = SchoolInfo::first();
+                $schoolName = $shoolInfo ? $shoolInfo->name : 'CDEVITSolutions';
+
+                $student = $attendance->student;
+
+                $lastname = mb_strtoupper($student->lastname);
+                $firstname = mb_strtoupper($student->firstname);
+                $middleInitial = !empty($student->middlename) ? mb_strtoupper(mb_substr($student->middlename, 0, 1)) . "." : '';
+                $extname = !empty($student->extname) ? mb_strtoupper($student->extname) : '';
+
+                $name = trim("$lastname, $firstname $extname $middleInitial");
+                
+                $formattedTime = date('h:i:s A', strtotime($scanned_at));
+                $formattedDate = date('M d, Y', strtotime($scanned_at));
+                $message = "{$name} {$message_type} in {$schoolName} at {$formattedTime} on {$formattedDate}";
+
+                $emailPayload = [
+                    'id' => $attendance->id,
+                    'email' => $student->email ?? '', 
+                    'message' => $message
+                ];
+
+                dispatch(new AttendanceEmailJob($emailPayload))->onQueue('attendance_emails');                
+
+                // $smsPayload = [
+                //     'send_sms' => true,
+                //     'phone_number' => $student->contact_no ?? '', 
+                //     'message' => $message
+                // ];
+
+                if (!empty($student->contact_no)) {
+                    SmsQueue::create([
+                        'attendance_id' => $attendance->id,
+                        'phone_number' => $student->contact_no,
+                        'message' => $message,
+                        'status' => 'pending'
+                    ]);
+                }
 
                 $attendances = [];
 
@@ -322,6 +433,11 @@ class AttendanceController extends Controller
                     'success' => true,
                     'message' => 'Successful!',
                     'student' => $attendance,
+                    'sms_payload' => [
+                        'send_sms' => false, 
+                        'phone_number' => '',
+                        'message' => ''
+                    ],
                     'attendances' => $attendances
                 ]);
             }); // End of DB::transaction
@@ -364,7 +480,9 @@ class AttendanceController extends Controller
 
     private function sendSmsAttendance($attendance, $message_type, $scanned_at)
     {
-        $schoolName = 'Leyte Normal University';
+        $shoolInfo = SchoolInfo::first();
+        $schoolName = $shoolInfo ? $shoolInfo->name : 'CDEVITSolutions';
+
         $student = $attendance->student;
 
         $lastname = mb_strtoupper($student->lastname);
@@ -858,7 +976,7 @@ class AttendanceController extends Controller
 
     public function updateDaily(Request $request)
     {
-        //try {
+        try {
             $request->validate([
                 'student_id' => 'required|integer',
                 'date' => 'required|date',
@@ -888,7 +1006,7 @@ class AttendanceController extends Controller
                     'section'        => $student->section,
                     'teachers_id'    => $student->teachers_id,
                 ];
-
+                
                 /**
                  * ======================
                  * PRESENT
@@ -896,7 +1014,7 @@ class AttendanceController extends Controller
                  */
                 if ($request->status === 'present') {
 
-                    AttendanceDailySummary::updateOrCreate(
+                    AttendanceDailySummary::updateOrCreate( 
                         [
                             'student_id' => $student->id,
                             'date' => $request->date,
@@ -947,7 +1065,6 @@ class AttendanceController extends Controller
                             ->delete();
                     }
                     
-                    dd($student->id);
                     // ➜ Insert absence if not exists
                     Absence::updateOrCreate(
                         [
@@ -962,18 +1079,18 @@ class AttendanceController extends Controller
                 'message' => 'Attendance updated successfully'
             ], 200);
 
-        // } catch (ValidationException $e) {
+        } catch (ValidationException $e) {
 
-        //     return response()->json([
-        //         'message' => 'Validation error',
-        //         'errors' => $e->errors(),
-        //     ], 422);
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
 
-        // } catch (\Exception $e) {
+        } catch (\Exception $e) {
 
-        //     return response()->json([
-        //         'message' => 'Failed to update attendance. Please try again.',
-        //     ], 500);
-        // }
+            return response()->json([
+                'message' => 'Failed to update attendance. Please try again.',
+            ], 500);
+        }
     }
 }

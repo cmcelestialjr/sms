@@ -115,8 +115,7 @@ class UsersController extends Controller
     {
         $query = $request->get('search');
 
-        $teachers = User::with('teacher')
-            ->where('name', 'LIKE', "%{$query}%")
+        $teachers = User::where('name', 'LIKE', "%{$query}%")
             ->orWhereHas('teacher', function ($q) use ($query) {
                 $q->where(function ($q2) use ($query) {
                     $q2->where('lastname', 'LIKE', "%{$query}%")
@@ -131,7 +130,6 @@ class UsersController extends Controller
 
         $teachers = $teachers->limit(10)
             ->get();
-
         return $teachers;
     }
 

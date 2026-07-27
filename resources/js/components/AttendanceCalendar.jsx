@@ -43,6 +43,7 @@ const AttendanceCalendar = () => {
     const [formModal, setFormModal] = useState(false);
     const [form, setForm] = useState({
         student_id: "",
+        student_name: "",
         status: "absent",
         date: "",
         is_late: 0,
@@ -117,9 +118,10 @@ const AttendanceCalendar = () => {
 
     const daysInMonth = getDaysInMonth(year, month);
 
-    const handleDailyClick = (student_id, date, attendance) => {
+    const handleDailyClick = (student_id, name, date, attendance) => {
         setForm({
             student_id,
+            student_name: name,
             date,
             attendance_id: attendance?.id ?? null,
             status: attendance?.id ? "present" : "absent",
@@ -295,7 +297,7 @@ const AttendanceCalendar = () => {
                                             <td 
                                                 key={dayIndex} 
                                                 className={`text-center text-xs px-1 py-1 cursor-pointer border-l border-gray-200 hover:bg-gray-200 transition duration-100 ${cellColorClass}`}
-                                                onClick={() => handleDailyClick(student.id, fullDate, attendance)}
+                                                onClick={() => handleDailyClick(student.id, `${student.lastname}, ${student.firstname}`, fullDate, attendance)}
                                             >
                                                 {cellContent}
                                             </td>

@@ -58,7 +58,7 @@ class HolidayController extends Controller
             'name' => 'required',
             'date_from' => 'required|date',
             'date_to' => 'required|date|after_or_equal:date_from',
-            'type' => 'required|string|in:Regular,Special',
+            'type' => 'required|string|in:Regular,Special,Suspension',
             'repeat' => 'required|string|in:Yes,No',
             'half_day' => 'nullable|string|in:,am,pm',
         ]);
@@ -72,7 +72,7 @@ class HolidayController extends Controller
             'date_to' => $request->date_to,
             'type' => $request->type,
             'repeat' => $request->repeat,
-            'half_day' => $request->half_day,
+            'half_day' => $request->half_day ?? '',
             'updated_by' => $user->id,
         ]);
 
@@ -100,7 +100,7 @@ class HolidayController extends Controller
             'name' => 'required',
             'date_from' => 'required|date',
             'date_to' => 'required|date|after_or_equal:date_from',
-            'type' => 'required|string|in:Regular,Special',
+            'type' => 'required|string|in:Regular,Special,Suspension',
             'repeat' => 'required|string|in:Yes,No',
             'half_day' => 'nullable|string|in:,am,pm',
         ]);
@@ -116,7 +116,7 @@ class HolidayController extends Controller
             'date_to' => $date_to,
             'type' => $request->type,
             'repeat' => $request->repeat,
-            'half_day' => $request->half_day,
+            'half_day' => $request->half_day ?? '',
             'updated_by' => $user_id,
         ]);
 

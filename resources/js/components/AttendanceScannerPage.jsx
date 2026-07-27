@@ -226,7 +226,7 @@ const AttendanceScannerPage = () => {
                     </div>
                   )}
                   {/* Status Indicator Badge */}
-                  <div className={`absolute bottom-2 right-2 w-12 h-12 rounded-full border-4 border-white flex items-center justify-center shadow-md ${scannedStudent.status === 'in' ? 'bg-emerald-500' : 'bg-orange-500'}`}>
+                  <div className={`absolute bottom-2 right-2 w-12 h-12 rounded-full border-4 border-white flex items-center justify-center shadow-md ${scannedStudent.type === 'In' ? 'bg-emerald-500' : 'bg-orange-500'}`}>
                     <CheckCircle className="text-white w-6 h-6" />
                   </div>
                 </div>
@@ -246,8 +246,8 @@ const AttendanceScannerPage = () => {
                   Grade {scannedStudent.grade} - {scannedStudent.section}
                 </p>
 
-                <div className={`mt-8 px-10 py-3 rounded-full text-white font-bold text-2xl uppercase shadow-lg ${scannedStudent.status === 'in' ? 'bg-emerald-500 shadow-emerald-500/30' : 'bg-orange-500 shadow-orange-500/30'}`}>
-                  TIME {scannedStudent.status === 'in' ? 'IN' : 'OUT'} SECURED
+                <div className={`mt-8 px-10 py-3 rounded-full text-white font-bold text-2xl uppercase shadow-lg ${scannedStudent.type === 'In' ? 'bg-emerald-500 shadow-emerald-500/30' : 'bg-orange-500 shadow-orange-500/30'}`}>
+                  TIME {scannedStudent.type === 'In' ? 'IN' : 'OUT'} SECURED
                 </div>
               </div>
             ) : (
@@ -330,11 +330,11 @@ const AttendanceScannerPage = () => {
                         </td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                            log.status === 'in' 
+                            log.type === 'In' 
                               ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
                               : 'bg-orange-100 text-orange-700 border border-orange-200'
                           }`}>
-                            {log.status}
+                            {log.type}
                           </span>
                         </td>
                       </tr>

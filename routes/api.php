@@ -11,11 +11,13 @@ use App\Http\Controllers\Api\GradeController;
 use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\SchoolYearController;
+use App\Http\Controllers\Api\SeatPlanController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\StationController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Reports\Sf2Controller;
+use App\Http\Controllers\Api\SmsGatewayController;
 use App\Http\Controllers\UsersController;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -35,10 +37,22 @@ Route::get('/stations/{id}', [StationController::class, 'show']);
 // Route::put('/stations/{id}', [StationController::class, 'update']);
 // Route::delete('/stations/{id}', [StationController::class, 'destroy']);
 
+Route::prefix('sms')->group(function () {
+    Route::get('/pending', [SmsGatewayController::class, 'fetchPending']);
+    Route::post('/status', [SmsGatewayController::class, 'updateStatus']);
+});
+
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/attendances/lists', [AttendanceController::class, 'lists']);
     Route::get('/attendances', [AttendanceController::class, 'index']);
     Route::put('/attendances/daily', [AttendanceController::class, 'updateDaily']);
+    Route::get('/attendances/class-roster', [AttendanceController::class, 'classRoster']);
+
+    Route::get('/seat-plan/teachers', [SeatPlanController::class, 'getTeachers']);
+    Route::get('/seat-plan', [SeatPlanController::class, 'getLayout']);
+    Route::post('/seat-plan', [SeatPlanController::class, 'saveLayout']);
+    Route::get('/teacher-classes', [SeatPlanController::class, 'getTeacherClasses']);
+
 
     Route::get('/absences/index', [AbsenceController::class, 'index']);
 

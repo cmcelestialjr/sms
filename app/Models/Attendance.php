@@ -25,7 +25,8 @@ class Attendance extends Model
         'grade',
         'section',
         'teachers_id',
-        'message_status'
+        'message_status',
+        'email_status',
     ];
 
     public function student(): BelongsTo

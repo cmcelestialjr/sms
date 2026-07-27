@@ -54,5 +54,10 @@ class Teacher extends Model
     {
         return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
     }
+
+    public function schoolYearStudents(): HasMany
+    {
+        return $this->hasMany(SchoolYearStudent::class, 'teacher_id', 'user_id');
+    }
 }
 

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->text('message')->index();
+            $table->string('message')->index();
             $table->enum('audience_type', ['individual', 'all', 'by_grade', 'by_section', 'teachers']);
             $table->string('grade')->nullable();
             $table->string('section')->nullable();

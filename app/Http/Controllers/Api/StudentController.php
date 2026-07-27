@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsNewStudentJob;
 use App\Models\Attendance;
+use App\Models\SchoolInfo;
 use App\Models\SchoolYear;
 use App\Models\SchoolYearStudent;
 use App\Models\Student;
@@ -162,9 +163,9 @@ class StudentController extends Controller
 
         try {           
 
-            // $student_id = $this->getStudentId();
+            $student_id = $this->getStudentId();
 
-            // $validated['student_id'] = $student_id;
+            $validated['student_id'] = $student_id;
             $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
             $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
             $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
@@ -239,11 +240,14 @@ class StudentController extends Controller
 
             $name = "$lastname, $firstname $extname $middleInitial";
 
-            $message = $name." is currently enrolled in Leyte Normal University. Thank you.";
+            $shoolInfo = SchoolInfo::first();
+            $schoolName = $shoolInfo ? $shoolInfo->name : 'CDEVITSolutions';
+
+            $message = $name." is currently enrolled in " . $schoolName . ". Thank you.";
             
             $message = str_replace(" ","_",$message);
 
-            dispatch(new SendSmsNewStudentJob($student->contact_no, $message));
+            dispatch(new SendSmsNewStudentJob($student->contact_no, $message))->onQueue('gsmNewStudent');
 
             DB::commit();
             return $student;
@@ -295,13 +299,14 @@ class StudentController extends Controller
             'extname' => 'nullable|string',
             'sex' => 'required|in:Male,Female',
             'contact_no' => 'required|regex:/^09\d{9}$/',
-            'birthdate' => 'nullable|date',
+            'birthdate' => 'nullable',
             'email' => 'nullable|string',
             'address' => 'nullable|string',
-            'lrn_no' => 'required|string',
+            'lrn_no' => 'required|string|unique:students,student_id,' . $id,
             'status' => 'required|in:Active,Inactive'
         ]);
         
+        $validated['birthdate'] = $request->birthdate=='null' ? null : date('Y-m-d', strtotime($request->birthdate));
         $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
         $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
         $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
@@ -449,13 +454,14 @@ class StudentController extends Controller
     {
         $year = now()->format('Y');
 
-        $query = Student::where('student_id', 'LIKE', "$year-%")->orderByDesc('student_id')->first();
+        $lastStudent = Student::where('student_id', 'LIKE', "$year%")
+            ->selectRaw("student_id, CAST(SUBSTRING(student_id, 5) AS UNSIGNED) as num")
+            ->orderByDesc('num')
+            ->first();
 
-        $number = $query && preg_match('/\d{4}-(\d+)/', $query->student_id, $matches) ? intval($matches[1]) + 1 : 1;
+        $number = $lastStudent ? $lastStudent->num + 1 : 1;
 
-        $student_id = "$year" . str_pad($number, 5, '0', STR_PAD_LEFT);
-
-        return $student_id;
+        return $year . str_pad($number, 5, '0', STR_PAD_LEFT);
     }
 
     private function updateSchoolYearStudent($student, $from)

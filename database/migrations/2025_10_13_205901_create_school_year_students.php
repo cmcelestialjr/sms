@@ -25,7 +25,7 @@ return new class extends Migration
             $table->date('date_enrolled')->index()->nullable();
             $table->integer('is_transferred')->default(0)->index(); // 0 = No, 1 = Yes
             $table->date('out_date')->index()->nullable();
-            $table->enum('out_type', ['Transferee', 'Dropout', 'Graduate'])->index(); // Transferee, Dropout, Graduate
+            $table->enum('out_type', ['Transferee', 'Dropout', 'Graduate'])->index()->nullable(); // Transferee, Dropout, Graduate
             $table->timestamps();
         });
     }
