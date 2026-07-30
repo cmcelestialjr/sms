@@ -102,4 +102,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/dtr', [DtrController::class, 'index']);
 
     Route::post('/reports/sf2', [Sf2Controller::class, 'index']);
+
+    Route::get('/import-data', [SeatPlanController::class, 'index']);
 });

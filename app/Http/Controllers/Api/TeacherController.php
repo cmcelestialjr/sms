@@ -44,7 +44,7 @@ class TeacherController extends Controller
         ]);
 
         DB::beginTransaction();
-
+        
         try{ 
             
             $getSchoolYear = $this->schoolYearServices->getSchoolYear();

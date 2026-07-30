@@ -135,92 +135,116 @@ class UsersController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([            
-            'lastname' => 'required|string',
-            'firstname' => 'required|string',
-            'extname' => 'nullable|string',
-            'middlename' => 'nullable|string',
-            'username' => 'required|string|unique:users',
-            'password' => 'required|string',
-            'role' => 'required|numeric|exists:users_roles,id',            
-        ]);
-
+        // 1. Authenticate Request
         $user = Auth::user();
-
         if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $user_id = $user->id;
-
-        $name = $request->lastname.', '.$request->firstname.' '.$request->extname.' '.$request->middlename;       
+        // 2. Consolidate Validation Rules
+        $rules = [
+            'lastname'   => 'required|string',
+            'firstname'  => 'required|string',
+            'extname'    => 'nullable|string',
+            'middlename' => 'nullable|string',
+            'username'   => 'required|string|unique:users',
+            'password'   => 'required|string',
+            'role'       => 'required|numeric|exists:users_roles,id',
+        ];
 
         if ($request->hasFile('newPhoto')) {
-            $request->validate([
-                'newPhoto' => 'required|image',
-            ]);
-            $photo = $request->file('newPhoto')->store('teachers', 'public');
-        }else{
-            $photo = $request->photo;
+            $rules['newPhoto'] = 'required|image';
         }
 
-        $insert = new User;
-        $insert->name = $name;
-        $insert->lastname = $request->lastname;
-        $insert->firstname = $request->firstname;
-        $insert->extname = $request->extname;
-        $insert->middlename = $request->middlename ?? "";
-        $insert->username = $request->username ?? "";
-        $insert->password = Hash::make($request->password);
-        $insert->role_id = $request->role;
-        $insert->photo = $request->photo;
-        $insert->save();
-
-        if($request->role==3){
-            $teacher_id = $insert->id;
-
-            $request->validate([
-                'id_no' => 'required|string|unique:teachers',
-                'status' => 'required|in:Active,Inactive',
-                'contact_no' => 'required|regex:/^09\d{9}$/',
-                'email' => 'nullable|email',
-                'address' => 'nullable|string',
-                'sex' => 'required|in:Male,Female',
-                'position' => 'nullable|string',
-                'level' => 'required|in:Kinder,Elementary,Junior High School,Senior High School',
-                'grade' => 'required',
-                'section' => 'required',
+        // Append Teacher-specific rules if role is 3
+        if ($request->role == 3) {
+            $rules = array_merge($rules, [
+                'id_no'          => 'required|string|unique:teachers',
+                'status'         => 'required|in:Active,Inactive',
+                'contact_no'     => 'required|regex:/^09\d{9}$/',
+                'email'          => 'nullable|email',
+                'address'        => 'nullable|string',
+                'sex'            => 'required|in:Male,Female',
+                'position'       => 'nullable|string',
+                'level'          => 'required|in:Kinder,Elementary,Junior High School,Senior High School',
+                'grade'          => 'required',
+                'section'        => 'required',
                 'school_year_id' => 'required|integer|exists:school_years,id',
             ]);
-
-            $school_year_id = $request->school_year_id;
-
-            $getSchoolYear = SchoolYear::find($school_year_id);
-            $sy_from = $getSchoolYear->sy_from;
-            $sy_to = $getSchoolYear->sy_to;        
-            
-            $insert = new Teacher();
-            $insert->id_no = $request->id_no ?? null;
-            $insert->lastname = $request->lastname;
-            $insert->firstname = $request->firstname;
-            $insert->extname = $request->extname ?? null;
-            $insert->middlename = $request->middlename ?? null;
-            $insert->contact_no = $request->contact_no ?? null;
-            $insert->email = $request->email ?? null;
-            $insert->address = $request->address ?? null;
-            $insert->sex = $request->sex;
-            $insert->position = $request->position ?? null;
-            $insert->photo = $photo == 'null' ? null : $photo;
-            $insert->school_year_id = $school_year_id;
-            $insert->sy_from = $sy_from;
-            $insert->sy_to = $sy_to;
-            $insert->level = $request->level;
-            $insert->grade = $request->grade;
-            $insert->section = $request->section;            
-            $insert->user_id = $teacher_id;
-            $insert->save();
         }
-        return response()->json(['message' => 'success'], 201);
+
+        $request->validate($rules);
+
+        // 3. Handle File Upload
+        if ($request->hasFile('newPhoto')) {
+            $photo = $request->file('newPhoto')->store('teachers', 'public');
+        } else {
+            $photo = $request->photo;
+        }
+        
+        // Normalize photo value
+        $photo = $photo === 'null' ? null : $photo;
+
+        // 4. Database Transaction
+        DB::beginTransaction();
+
+        try {
+            $name = trim($request->lastname . ', ' . $request->firstname . ' ' . $request->extname . ' ' . $request->middlename);
+
+            // Create User
+            $newUser = new User();
+            $newUser->name       = $name;
+            $newUser->lastname   = $request->lastname;
+            $newUser->firstname  = $request->firstname;
+            $newUser->extname    = $request->extname;
+            $newUser->middlename = $request->middlename ?? "";
+            $newUser->username   = $request->username ?? "";
+            $newUser->password   = Hash::make($request->password);
+            $newUser->role_id    = $request->role;
+            $newUser->photo      = $photo; 
+            $newUser->save();
+
+            // Create Teacher if Role is 3
+            if ($request->role == 3) {
+                $getSchoolYear = SchoolYear::find($request->school_year_id);
+                
+                $newTeacher = new Teacher();
+                $newTeacher->id_no          = $request->id_no ?? null;
+                $newTeacher->lastname       = $request->lastname;
+                $newTeacher->firstname      = $request->firstname;
+                $newTeacher->extname        = $request->extname ?? null;
+                $newTeacher->middlename     = $request->middlename ?? null;
+                $newTeacher->contact_no     = $request->contact_no ?? null;
+                $newTeacher->email          = $request->email ?? null;
+                $newTeacher->address        = $request->address ?? null;
+                $newTeacher->sex            = $request->sex;
+                $newTeacher->position       = $request->position ?? null;
+                $newTeacher->photo          = $photo;
+                $newTeacher->school_year_id = $request->school_year_id;
+                $newTeacher->sy_from        = $getSchoolYear->sy_from;
+                $newTeacher->sy_to          = $getSchoolYear->sy_to;
+                $newTeacher->level          = $request->level;
+                $newTeacher->grade          = $request->grade;
+                $newTeacher->section        = $request->section;
+                $newTeacher->user_id        = $newUser->id;
+                $newTeacher->save();
+            }
+
+            DB::commit();
+            
+            return response()->json(['message' => 'success'], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            // Optional: Log the error for your own debugging
+            // \Illuminate\Support\Facades\Log::error('Store Method Error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'An error occurred while processing your request.',
+                'error'   => $e->getMessage() 
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)

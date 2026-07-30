@@ -163,7 +163,7 @@ const Teachers = () => {
             formData.append('role', 3);
 
             if(!editingTeacher){
-                const username = form.lastname
+                const username = form.id_no
                     .normalize('NFD')
                     .replace(/[\u0300-\u036f]/g, '')
                     .replace(/\s+/g, '')

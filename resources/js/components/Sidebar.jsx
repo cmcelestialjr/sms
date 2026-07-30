@@ -17,7 +17,9 @@ import { Menu,
     Plane,
     CalendarDays,
     NotebookText,
-    FileText, } 
+    FileText, 
+    FileSpreadsheet
+  } 
         from "lucide-react";
 
 const Sidebar = () => {
@@ -207,7 +209,20 @@ const Sidebar = () => {
                     Dtr List
                   </Link>
                 </li> */}
-                </> 
+
+                <li>
+                  <Link 
+                    to="/import-data" 
+                    className={`flex items-center p-2 rounded transition ${
+                      isActive("/import-data") ? "bg-blue-500 text-white" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <FileSpreadsheet size={20} className="mr-2" />
+                    Import Data
+                  </Link>
+                </li>
+
+                </>
               )}
 
               <li>
