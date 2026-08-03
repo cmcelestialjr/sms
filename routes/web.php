@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\StudentImportController;
 use Illuminate\Support\Facades\Route;
 
 // Route::get('/', function () {
 //     return view('welcome');
 // });
+
+Route::get('/students/import', [StudentImportController::class, 'index'])->name('students.import.index');
+Route::post('/students/import', [StudentImportController::class, 'import'])->name('students.import.process');
 
 Route::get('/{any?}', function () {
     return view('app');

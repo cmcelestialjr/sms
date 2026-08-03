@@ -49,6 +49,11 @@ class Teacher extends Model
     {
         return $this->students()->count();
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
     
     public function schoolYear(): BelongsTo
     {
