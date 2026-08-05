@@ -333,7 +333,7 @@ class AttendanceController extends Controller
                     ], 409);
                 }
 
-                $scanned_at = now();
+                $scanned_at = date('Y-m-d H:i:s', strtotime(now()));
 
                 // 4. Update Student
                 // $student = $this->updateStudent($student);
@@ -736,6 +736,7 @@ class AttendanceController extends Controller
     private function getType($student, $scanned_at)
     {
         $date = date('Y-m-d', strtotime($scanned_at));
+        $time = date('H:i:s', strtotime($scanned_at));
 
         // Get all today's logs for this student in one go
         $todayLogs = Attendance::where('student_id', $student->id)
@@ -768,6 +769,7 @@ class AttendanceController extends Controller
 
         // 3. Toggle type based on the last log
         $newType = ($lastLog->type === 'In') ? 'Out' : 'In';
+        $newType = $time > '14:00:00' ? 'Out' : $newType;
         $msgType = ($newType === 'In') ? "has LOGGED IN" : "has LOGGED OUT";
 
         return [
