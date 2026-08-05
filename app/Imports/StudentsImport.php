@@ -33,7 +33,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
                     continue;
                 }
 
-                $teacher = Teacher::where('teacher_id', $row['teacher_id'] ?? null)->first();
+                $teacher = Teacher::where('user_id', $row['teacher_id'] ?? null)->first();
 
                 $school_year_id = $teacher ? $teacher->school_year_id : $latestSchoolYear->id;
                 $sy_from = $teacher ? $teacher->sy_from : $latestSchoolYear->sy_from;
@@ -47,11 +47,11 @@ class StudentsImport implements ToCollection, WithHeadingRow
                 $student = Student::updateOrCreate(
                     ['lrn_no' => $row['student_id']], 
                     [
-                        'lastname'       => $row['lastname'] ?? null,
-                        'firstname'      => $row['firstname'] ?? null,
-                        'middlename'     => $row['middlename'] ?? null,
-                        'extname'        => $row['extname'] ?? null,
-                        'contact_no'     => $row['guardian_contact_no'] ?? null,
+                        'lastname'   => isset($row['lastname']) ? mb_strtoupper(str_replace("'", "", trim($row['lastname']))) : null,
+                        'firstname'  => isset($row['firstname']) ? mb_strtoupper(str_replace("'", "", trim($row['firstname']))) : null,
+                        'middlename' => isset($row['middlename']) ? mb_strtoupper(str_replace("'", "", trim($row['middlename']))) : null,
+                        'extname'    => isset($row['extname']) ? mb_strtoupper(str_replace("'", "", trim($row['extname']))) : null,
+                        'contact_no'     => '0'.$row['guardian_contact_no'] ?? null,
                         'email'          => $row['guardian_email'] ?? null,
                         'sex'            => $row['sex'] ?? 'Female',
                         'qr_code'        => $row['student_id'] ?? null,
@@ -75,8 +75,8 @@ class StudentsImport implements ToCollection, WithHeadingRow
                     StudentGuardian::updateOrCreate(
                         ['student_id' => $student->id],
                         [
-                            'name'       => $row['guardian_name'],
-                            'contact_no' => $row['guardian_contact_no'] ?? null,
+                            'name' => isset($row['guardian_name']) ? mb_strtoupper(str_replace("'", "", trim($row['guardian_name']))) : null,
+                            'contact_no' => '0'.$row['guardian_contact_no'] ?? null,
                             'email'      => $row['guardian_email'] ?? null,
                         ]
                     );
@@ -91,6 +91,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
                     [
                         'sy_from'        => $sy_from,
                         'sy_to'          => $sy_to,
+                        'teacher_id'     => $row['teacher_id'],
                         'level'          => $level,
                         'grade'          => $grade,
                         'section'        => $section,
