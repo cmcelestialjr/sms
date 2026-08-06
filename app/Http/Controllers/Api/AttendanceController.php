@@ -251,15 +251,15 @@ class AttendanceController extends Controller
         return response()->json($students);
     }
 
-    public function scan(Request $request)
+    public function scan(Request $request, $id, $code)
     {
-        $request->validate([
-            'id' => 'required|numeric|min:1|exists:stations,id',
-            'code' => 'required|string',
-        ]);
+        // $request->validate([
+        //     'id' => 'required|numeric|exists:stations,id',
+        //     'code' => 'required|string',
+        // ]);
         
-        $code = $request->code;
-        $id = $request->id;
+        // $code = $request->code;
+        // $id = $request->id;
         
         $station = Station::find($id);
 
@@ -270,7 +270,7 @@ class AttendanceController extends Controller
         $stationIp = $request->ipaddress;
         $deviceId = $station->uuid;
 
-        return $this->handleScan($deviceId, $stationIp, 'rfid', $code);
+        return $this->handleScan($deviceId, $stationIp, 'qr', $code);
     }
 
     public function scanQr(Request $request)
@@ -314,7 +314,7 @@ class AttendanceController extends Controller
                 );
 
                 $method = $typeScan;
-                
+         
                 // 2. Student Lookup
                 $student = Student::where($method === 'qr' ? 'qr_code' : 'rfid_tag', $code)->first();
                 if (!$student) {
@@ -333,7 +333,7 @@ class AttendanceController extends Controller
                     ], 409);
                 }
 
-                $scanned_at = date('Y-m-d H:i:s', strtotime(now()));
+                $scanned_at = date('Y-m-d H:i:s');
 
                 // 4. Update Student
                 // $student = $this->updateStudent($student);
@@ -750,7 +750,7 @@ class AttendanceController extends Controller
         // 1. Check for max logs first
         if ($count >= 4) {
             return [
-                'result' => 'error', // This should be handled in handleScan to block the save
+                'result' => 'error',
                 'type' => 'Out',
                 'message' => 'Maximum daily logs reached (4/4).',
                 'message_type' => "has EXCEEDED logs"
@@ -759,17 +759,17 @@ class AttendanceController extends Controller
 
         // 2. If no logs, it's always an "In"
         if (!$lastLog) {
+            $type = $time > '14:00:00' ? 'Out' : 'In';
             return [
                 'result' => 'success',
-                'type' => 'In',
+                'type' => $type,
                 'message' => 'Success!',
                 'message_type' => "has LOGGED IN"
             ];
         }
 
         // 3. Toggle type based on the last log
-        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';
-        $newType = $time > '14:00:00' ? 'Out' : $newType;
+        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';        
         $msgType = ($newType === 'In') ? "has LOGGED IN" : "has LOGGED OUT";
 
         return [
