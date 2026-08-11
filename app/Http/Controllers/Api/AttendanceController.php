@@ -769,7 +769,10 @@ class AttendanceController extends Controller
         }
 
         // 3. Toggle type based on the last log
-        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';        
+        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';   
+        
+        $newType = $time > '14:00:00' ? 'Out' : $newType;
+        
         $msgType = ($newType === 'In') ? "has LOGGED IN" : "has LOGGED OUT";
 
         return [
