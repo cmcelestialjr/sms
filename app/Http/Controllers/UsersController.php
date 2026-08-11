@@ -59,7 +59,7 @@ class UsersController extends Controller
 
     public function teachers(Request $request)
     {
-        $query = User::with('userRole','teacher','students')
+        $query = User::with('userRole','teacher.activestudents','students')
             ->whereHas('teacher');
 
         if ($request->has('search') && !empty($request->search)) {
@@ -127,7 +127,7 @@ class UsersController extends Controller
         //     $schoolYear = $request->schoolYear;
         //     $teachers->where('school_year_id', $schoolYear);
         // }
-
+        
         $teachers = $teachers->limit(10)
             ->get();
         return $teachers;
@@ -170,6 +170,7 @@ class UsersController extends Controller
                 'grade'          => 'required',
                 'section'        => 'required',
                 'school_year_id' => 'required|integer|exists:school_years,id',
+                'co_adviser'     => 'nullable|boolean',
             ]);
         }
 
@@ -207,6 +208,22 @@ class UsersController extends Controller
             // Create Teacher if Role is 3
             if ($request->role == 3) {
                 $getSchoolYear = SchoolYear::find($request->school_year_id);
+
+                $mainTeacher = null;
+                if ($request->co_adviser) {
+                    $mainTeacher = Teacher::where('school_year_id', $request->school_year_id)
+                        ->where('level', $request->level)
+                        ->where('grade', $request->grade)
+                        ->where('section', $request->section)
+                        ->where(function ($query) {
+                            $query->whereNull('co_adviser')->orWhere('co_adviser', 0);
+                        })->first();
+
+                    if (!$mainTeacher) {
+                        DB::rollBack();
+                        return response()->json(['message' => 'Add an adviser first before adding a co-teacher for this grade and section.'], 422);
+                    }
+                }
                 
                 $newTeacher = new Teacher();
                 $newTeacher->id_no          = $request->id_no ?? null;
@@ -226,8 +243,18 @@ class UsersController extends Controller
                 $newTeacher->level          = $request->level;
                 $newTeacher->grade          = $request->grade;
                 $newTeacher->section        = $request->section;
+                $newTeacher->co_adviser     = $request->co_adviser ? 1 : null;
                 $newTeacher->user_id        = $newUser->id;
                 $newTeacher->save();
+
+                if ($request->co_adviser && $mainTeacher) {
+                    SchoolYearStudent::where('teacher_id', $mainTeacher->user_id)
+                        ->where('school_year_id', $request->school_year_id)
+                        ->where('level', $request->level)
+                        ->where('grade', $request->grade)
+                        ->where('section', $request->section)
+                        ->update(['co_teacher_id' => $newUser->id]);
+                }
             }
 
             DB::commit();
@@ -336,6 +363,7 @@ class UsersController extends Controller
                 'grade' => 'required',
                 'section' => 'required',
                 'school_year_id' => 'required|integer|exists:school_years,id',
+                'co_adviser'     => 'nullable|boolean',
             ]);
 
             $school_year_id = $request->school_year_id;
@@ -343,6 +371,22 @@ class UsersController extends Controller
             $getSchoolYear = SchoolYear::find($school_year_id);
             $sy_from = $getSchoolYear->sy_from;
             $sy_to = $getSchoolYear->sy_to;
+
+            $mainTeacher = null;
+            if ($request->co_adviser) {
+                $mainTeacher = Teacher::where('school_year_id', $request->school_year_id)
+                    ->where('level', $request->level)
+                    ->where('grade', $request->grade)
+                    ->where('section', $request->section)
+                    ->where('user_id', '!=', $teacher_id)
+                    ->where(function ($query) {
+                        $query->whereNull('co_adviser')->orWhere('co_adviser', 0);
+                    })->first();
+
+                if (!$mainTeacher) {
+                    return response()->json(['message' => 'Add an adviser first before adding a co-teacher for this grade and section.'], 422);
+                }
+            }
 
             $check = Teacher::where('user_id',$teacher_id)->first();
 
@@ -368,33 +412,55 @@ class UsersController extends Controller
             $insert->level = $request->level;
             $insert->grade = $request->grade;
             $insert->section = $request->section;
+            $insert->co_adviser = $request->co_adviser ? 1 : null;
             $insert->school_year_id = $request->school_year_id;
             $insert->user_id = $teacher_id;
             $insert->status = $request->status;
             $insert->save();
 
             if($request->status=='Active'){
-                Student::where('teachers_id',$teacher_id)
-                    ->where('status','Active')
-                    ->update([
-                        'school_year_id' => $school_year_id,
-                        'sy_from' => $sy_from,
-                        'sy_to' => $sy_to,
-                        'level' => $request->level,
-                        'grade' => $request->grade,
-                        'section' => $request->section,
-                    ]);
+                if (!$request->co_adviser) {
+                    Student::where('teachers_id',$teacher_id)
+                        ->where('status','Active')
+                        ->update([
+                            'school_year_id' => $school_year_id,
+                            'sy_from' => $sy_from,
+                            'sy_to' => $sy_to,
+                            'level' => $request->level,
+                            'grade' => $request->grade,
+                            'section' => $request->section,
+                        ]);
 
-                SchoolYearStudent::where('teacher_id',$teacher_id)
-                    ->where('status','Active')
-                    ->update([
-                        'school_year_id' => $school_year_id,
-                        'sy_from' => $sy_from,
-                        'sy_to' => $sy_to,
-                        'level' => $request->level,
-                        'grade' => $request->grade,
-                        'section' => $request->section,
-                    ]);
+                    SchoolYearStudent::where('teacher_id',$teacher_id)
+                        ->where('status','Active')
+                        ->where('school_year_id', $school_year_id)
+                        ->update([
+                            'sy_from' => $sy_from,
+                            'sy_to' => $sy_to,
+                            'level' => $request->level,
+                            'grade' => $request->grade,
+                            'section' => $request->section,
+                        ]);
+                        
+                    SchoolYearStudent::where('co_teacher_id', $teacher_id)
+                        ->where('school_year_id', $school_year_id)
+                        ->where('level', $request->level)
+                        ->where('grade', $request->grade)
+                        ->where('section', $request->section)
+                        ->update(['co_teacher_id' => null]); 
+                    
+                } else if ($mainTeacher) {
+
+                    SchoolYearStudent::where('teacher_id', $mainTeacher->user_id)
+                        ->where('school_year_id', $school_year_id)
+                        ->where('level', $request->level)
+                        ->where('grade', $request->grade)
+                        ->where('section', $request->section)
+                        ->where('status', 'Active')
+                        ->update([
+                            'co_teacher_id' => $teacher_id
+                        ]);
+                }
             }
         }
 

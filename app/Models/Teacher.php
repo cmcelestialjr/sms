@@ -12,28 +12,33 @@ class Teacher extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id_no',
         'lastname',
         'firstname',
         'middlename',
         'extname',
         'contact_no',
         'email',
-        'school_year_id',
-        'photo',
+        'address',
+        'sex',
+        'position',
+        'school_year_id',        
         'sy_from',
         'sy_to',
         'level',
         'grade',
         'section',
-        'teachers_id',
-        'user_id',
         'status',
-        'address',
-        'sex',
-        'position',
+        'photo',
+        'co_adviser', //null, 1
+        'user_id'
     ];
 
-    protected $appends = ['students_count'];
+    protected $appends = [
+        'students_count',
+        'active_students_count',
+        'active_students_list',
+    ];
 
     public function attendances()
     {
@@ -45,9 +50,30 @@ class Teacher extends Model
         return $this->hasMany(Student::class, 'teachers_id', 'user_id');
     }
 
+    public function activestudents(): HasMany
+    {
+        return $this->hasMany(Student::class, 'teachers_id', 'user_id')
+            ->where('status', 'Active');
+    }
+
     public function getStudentsCountAttribute(): int 
     {
         return $this->students()->count();
+    }
+
+    public function getActiveStudentsListAttribute()
+    {
+        return $this->activestudents->filter(function ($student) {
+            return $student->school_year_id == $this->school_year_id
+                && $student->level == $this->level
+                && $student->grade == $this->grade
+                && $student->section == $this->section;
+        })->values();
+    }
+
+    public function getActiveStudentsCountAttribute(): int 
+    {
+        return $this->activestudents()->count();
     }
 
     public function user(): BelongsTo

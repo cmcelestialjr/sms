@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import { EyeIcon, EyeOffIcon, LockIcon, UserIcon } from 'lucide-react';
 import { LogInIcon } from 'lucide-react';
 import axios from 'axios';
 import toastr from 'toastr';
@@ -92,54 +92,110 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+        {/* Logo & Header */}
         <div className="text-center mb-8">
-          <img src="/images/clstldev2.png" alt="Logo" className="mx-auto w-32" />
-          <h1 className="text-2xl font-bold mt-4">Student Management System</h1>
+          <img
+            src="/images/clstldev2.png"
+            alt="Attendify Logo"
+            className="mx-auto h-20 w-20 object-contain"
+          />
+
+          <h1 className="mt-5 text-3xl font-bold text-gray-900 tracking-tight">
+            Attendify
+          </h1>
+
+          <p className="mt-2 text-gray-500 leading-relaxed">
+            Smart Student Attendance Management with
+            <span className="font-medium text-blue-600">
+              {" "}QR Code Tracking
+            </span>
+            {" "}and{" "}
+            <span className="font-medium text-blue-600">
+              Instant Notifications
+            </span>.
+          </p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-6">
+
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="space-y-5">
+
+          {/* Username */}
           <div className="relative">
+            <UserIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+
             <input
               type="text"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none ${
-                errors.username ? 'border-red-500' : 'focus:ring-2 focus:ring-blue-400'
-              }`}
               placeholder="Username"
               value={username}
-              onChange={handleUsernameChange}              
+              onChange={handleUsernameChange}
+              className={`w-full rounded-xl border bg-gray-50 py-3 pl-11 pr-4 transition
+                ${
+                  errors.username
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                }
+                focus:outline-none`}
             />
           </div>
+
+          {/* Password */}
           <div className="relative">
+            <LockIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+
             <input
-              type={showPassword ? 'text' : 'password'}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none ${
-                errors.password ? 'border-red-500' : 'focus:ring-2 focus:ring-blue-400'
-              }`}
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
-              onChange={handlePasswordChange}              
-            />  
+              onChange={handlePasswordChange}
+              className={`w-full rounded-xl border bg-gray-50 py-3 pl-11 pr-12 transition
+                ${
+                  errors.password
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                }
+                focus:outline-none`}
+            />
+
             <button
               type="button"
               onClick={toggleShowPassword}
-              className="absolute top-2/4 right-3 transform -translate-y-2/4 focus:outline-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition"
             >
-              {showPassword ? <EyeIcon className="h-5 w-5" /> : <EyeOffIcon className="h-5 w-5" />}
+              {showPassword ? (
+                <EyeIcon className="h-5 w-5" />
+              ) : (
+                <EyeOffIcon className="h-5 w-5" />
+              )}
             </button>
           </div>
+
+          {/* Login Button */}
           <button
-              type="submit"
-              className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition flex items-center justify-center space-x-2"
-              disabled={loading}
-            >              
-              {loading ? (
-                <div className="w-5 h-5 border-4 border-t-4 border-white border-solid rounded-full animate-spin"></div> // Loader
-              ) : (
-                <LogInIcon className="h-5 w-5" />
-              )}              
-              <span>{loading ? 'Logging in...' : 'Login'}</span>
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center rounded-xl bg-blue-600 py-3 font-semibold text-white transition duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {loading ? (
+              <>
+                <div className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                Signing In...
+              </>
+            ) : (
+              <>
+                <LogInIcon className="mr-2 h-5 w-5" />
+                Sign In
+              </>
+            )}
           </button>
         </form>
+
+        {/* Footer */}
+        <div className="mt-8 border-t pt-5 text-center">
+          <p className="text-xs text-gray-400">
+            © 2026 Attendify. All rights reserved.
+          </p>
+        </div>
       </div>
     </div>
   );

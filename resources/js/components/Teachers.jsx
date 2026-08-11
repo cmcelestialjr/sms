@@ -33,6 +33,7 @@ const Teachers = () => {
     const [showTeacherForTranser, setShowTeacherForTranser] = useState(false);
     const [schoolYears, setSchoolYears] = useState([]);
     const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
+    const [fromTeacherId, setFromTeacherId] = useState(null);
     const [form, setForm] = useState({
         id_no: '',
         lastname: '',
@@ -49,6 +50,7 @@ const Teachers = () => {
         address: '',
         position: '',
         sex: 'Male',
+        co_adviser: false,
     });
     const didFetch = useRef(false);
 
@@ -161,6 +163,7 @@ const Teachers = () => {
             }
 
             formData.append('role', 3);
+            formData.append('co_adviser', form.co_adviser ? 1 : 0);
 
             if(!editingTeacher){
                 const username = form.id_no
@@ -217,6 +220,7 @@ const Teachers = () => {
             position: '',
             sex: 'Male',
             school_year_id: schoolYears[0]?.id || "",
+            co_adviser: false,
         });
         setShowTeacherModal(true);
     };
@@ -241,11 +245,12 @@ const Teachers = () => {
             position: teacher.teacher?.position || '',
             sex: teacher.teacher?.sex || 'Male',
             school_year_id: teacher.teacher?.school_year_id || (schoolYears.length > 0 ? schoolYears[0]?.id : ""),
+            co_adviser: teacher.teacher?.co_adviser === 1,
         });
         setShowTeacherModal(true);
     };
 
-    const handleStudents = (students) => {
+    const handleStudents = (students, fromTeacherId) => {
         setShowTeacherForTranser(false);
         setSearchTeacherTerm("");
         setSearchTeacherId("");
@@ -256,6 +261,7 @@ const Teachers = () => {
         setSearchQuery("");
         setShowStudentModal(true);
         setStudents(students);
+        setFromTeacherId(fromTeacherId);
     };
 
     const handleCheckboxChange = (studentId) => {
@@ -322,6 +328,7 @@ const Teachers = () => {
 
             formData.append('id', searchTeacherId);
             formData.append('students', selectedStudents);
+            formData.append('fromTeacherId', fromTeacherId);
     
             const response = await axios.post(url, formData, {
                 headers: {
@@ -331,6 +338,8 @@ const Teachers = () => {
         
             fetchTeachers();
             setShowStudentModal(false);
+            setStudents([]);
+            setFromTeacherId(null);
             toastr.success("Saved successfully");
         } catch (error) {
             const errorMessage =
@@ -451,10 +460,10 @@ const Teachers = () => {
                                         <td className="border border-gray-300 px-4 py-2">
                                             <div className="flex justify-center">
                                                 <button
-                                                    onClick={() => handleStudents(teacher.students)}
+                                                    onClick={() => handleStudents(teacher?.teacher?.active_students_list, teacher.id)}
                                                     className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-600 transition cursor-pointer"
                                                 >
-                                                    {teacher.students_count}
+                                                    {teacher?.teacher?.active_students_count}
                                                 </button>
                                             </div>                                         
                                         </td>
@@ -759,6 +768,20 @@ const Teachers = () => {
                                     </select>
                                 </div>
 
+                                {/* Co-Teacher Checkbox */}
+                                <div className="flex items-center mt-6">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input 
+                                            type="checkbox"
+                                            name="co_adviser"
+                                            checked={form.co_adviser}
+                                            onChange={(e) => setForm({ ...form, co_adviser: e.target.checked })}
+                                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition-all"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700">Set as Co-Teacher</span>
+                                    </label>
+                                </div>
+
                                 {/* Action Buttons */}
                                 <div className="flex justify-end mt-6 space-x-3">
                                     <button
@@ -786,14 +809,18 @@ const Teachers = () => {
                                 <h2 className="text-xl font-semibold text-left">Students</h2>
                                 <button 
                                     className="text-xl font-semibold text-gray-600 cursor-pointer"
-                                    onClick={() => setShowStudentModal(false)}
+                                    onClick={() => (
+                                        setShowStudentModal(false),
+                                        setFromTeacherId(null),
+                                        setStudents([])
+                                    )}
                                 >
                                     <X size={16} />
                                 </button>
                             </div>
 
                             <p className="text-lg font-semibold mb-2">
-                                Total Students: {students?.length || 0}
+                                Total Students: {students?.length || 0} - {fromTeacherId}
                             </p>
 
                             <div className="mb-2 flex items-center justify-between space-x-4">
@@ -873,11 +900,11 @@ const Teachers = () => {
                                         <ul className="border border-gray-300 rounded-lg mt-1 max-h-48 overflow-y-auto bg-white z-10 relative">
                                             {teacherSuggestions.map((teacher) => (
                                                 <li
-                                                    key={teacher.user_id}
+                                                    key={teacher.id}
                                                     onClick={() => {
                                                         setSelectedTeacherSuggestion(teacher);
                                                         setSearchTeacherTerm(`${teacher.lastname}, ${teacher.firstname} ${teacher.extname || ''} ${teacher.middlename || ''}`);
-                                                        setSearchTeacherId(teacher.user_id);
+                                                        setSearchTeacherId(teacher.id);
                                                         setTeacherSuggestions([]);
                                                     }}
                                                     className="p-2 hover:bg-gray-100 cursor-pointer"
@@ -925,7 +952,11 @@ const Teachers = () => {
                             {/* Action Buttons */}
                             <div className="flex justify-end mt-6 space-x-3">
                                 <button
-                                    onClick={() => setShowStudentModal(false)}
+                                    onClick={() => (
+                                        setShowStudentModal(false),
+                                        setFromTeacherId(null),
+                                        setStudents([])
+                                    )}
                                     className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 cursor-pointer"
                                 >
                                     Close

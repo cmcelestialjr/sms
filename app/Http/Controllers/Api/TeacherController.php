@@ -155,12 +155,14 @@ class TeacherController extends Controller
     }
 
     public function transfer(Request $request)
-    {
-        
+    {   
         $validated = $request->validate([
             'id' => 'required|integer|exists:users,id',
             'students' => 'required|string', 
+            'fromTeacherId' => 'required|integer|exists:users,id'
         ]);
+
+        $fromTeacherId = $validated['fromTeacherId'];
 
         $studentsArray = explode(',', $request->students);
         
@@ -186,33 +188,38 @@ class TeacherController extends Controller
                 'status' => 'Active'
             ]);
 
+        $this->updateSchoolYearStudent($teacher, $validatedStudents, $fromTeacherId);
+
         return response()->json([
             'success' => true,
             'message' => 'Success',
         ], 200);
     }
 
-    private function updateSchoolYearStudent($student)
+    private function updateSchoolYearStudent($teacher, $validatedStudents, $fromTeacherId)
     {
-        $check = SchoolYearStudent::where('student_id',$student->id)
-            ->where('sy_from',$student->sy_from)
-            ->where('sy_to',$student->sy_to)
-            ->where('level',$student->level)
+        $fromTeacher = Teacher::where('user_id', $fromTeacherId)->first();
+
+        $fetchTeacher = Teacher::where('school_year_id', $teacher->school_year_id)
+            ->where('level', $teacher->level)
+            ->where('grade', $teacher->grade)
+            ->where('section', $teacher->section)
+            ->where('co_adviser', 1)
             ->first();
-        if($check){
-            $update = SchoolYearStudent::find($check->id);
-        }else{
-            $update = new SchoolYearStudent();
-            $update->student_id = $student->id;
-            $update->school_year_id = $student->school_year_id;
-            $update->sy_from = $student->sy_from;
-            $update->sy_to = $student->sy_to;
-            $update->level = $student->level;
-        }
-        $update->grade = $student->grade;
-        $update->section = $student->section;
-        $update->teacher_id = $student->teachers_id;
-        $update->save();
+
+        SchoolYearStudent::whereIn('student_id', $validatedStudents)
+            ->where('school_year_id', $fromTeacher->school_year_id)
+            ->where('teacher_id', $fromTeacherId)
+            ->update(['teacher_id' => $teacher->user_id,
+                'school_year_id' => $teacher->school_year_id,
+                'sy_from' => $teacher->sy_from,
+                'sy_to' => $teacher->sy_to,
+                'level' => $teacher->level,
+                'grade' => $teacher->grade,
+                'section' => $teacher->section,
+                'co_teacher_id' => $fetchTeacher ? $fetchTeacher->user_id : null,
+                'status' => 'Active'
+            ]);
     }
 
 }

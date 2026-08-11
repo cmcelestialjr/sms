@@ -19,6 +19,7 @@ class SchoolYearStudent extends Model
         'grade',
         'section',
         'teacher_id',
+        'co_teacher_id', //null, 1
         'status',
     ];
 

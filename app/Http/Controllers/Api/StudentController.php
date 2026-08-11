@@ -34,6 +34,10 @@ class StudentController extends Controller
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        $schoolYear = $request->schoolYear;
+        $role_id = $user->role_id;
+        $user_id = $user->id;
+
         $students = Student::with('teacher')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -45,9 +49,20 @@ class StudentController extends Controller
                         ->orWhere('grade', 'like', "%$search%")
                         ->orWhere('section', 'like', "%$search%");
                 });
-            });
+            })->whereHas('schoolYearStudents', function ($q) use ($schoolYear, $role_id, $user_id) {
+                if(!empty($schoolYear)){
+                    $q->where('school_year_id', $schoolYear);                    
+                }
 
-        if($user->role_id==3){
+                if($role_id==3){
+                    $q->where(function ($q) use ($user_id) {
+                        $q->where('teacher_id', $user_id);
+                        $q->orWhere('co_teacher_id', $user_id);
+                    });
+                }
+            });
+        
+        if($role_id==3){
             if ($request->has('status')){
                 if($request->status=='Approved'){
                     $students->where('teacher_id_approved',$user->id);
@@ -55,8 +70,7 @@ class StudentController extends Controller
                     $students->where('teacher_id_requested',$user->id);
                 }elseif($request->status=='Pending'){
                     $students->where('teacher_id_pending',$user->id);
-                }else{
-                    $students->where('teachers_id',$user->id);
+                }else{                    
                     $status = $request->status;
                     $students->where('status', $status);
                 }
@@ -66,11 +80,6 @@ class StudentController extends Controller
                 $status = $request->status;
                 $students->where('status', $status);
             }
-        }
-
-        if($request->has('schoolYear') && !empty($request->schoolYear)){
-            $schoolYear = $request->schoolYear;
-            $students->where('school_year_id', $schoolYear);
         }
         
         $students = $students->orderBy('lastname')->paginate(10);
@@ -359,13 +368,23 @@ class StudentController extends Controller
     public function statusTotal(Request $request)
     {
         $user = Auth::user();
+        $schoolYear = $request->schoolYear;
+        $role_id = $user->role_id;
+        $user_id = $user->id;
 
-        $totals = DB::table('students')
-                ->select('status', DB::raw('count(*) as total'));
-                
-        if($user->role_id==3){
-            $totals->where('teachers_id',$user->id);
-        }
+        $totals = Student::select('status', DB::raw('count(*) as total'))
+            ->whereHas('schoolYearStudents', function ($q) use ($schoolYear, $role_id, $user_id) {
+                if(!empty($schoolYear)){
+                    $q->where('school_year_id', $schoolYear);                    
+                }
+
+                if($role_id==3){
+                    $q->where(function ($q) use ($user_id) {
+                        $q->where('teacher_id', $user_id);
+                        $q->orWhere('co_teacher_id', $user_id);
+                    });
+                }
+            });
         
         // if ($request->has('search') && !empty($request->search)) {
         //     $search = $request->search;
@@ -378,11 +397,6 @@ class StudentController extends Controller
         //         ->orWhere('section', 'like', "%$search%");
         //     });
         // }
-
-        if($request->has('schoolYear') && !empty($request->schoolYear)){
-            $schoolYear = $request->schoolYear;
-            $totals->where('school_year_id', $schoolYear);
-        }
 
         $totals = $totals->groupBy('status')
                 ->get();
@@ -466,11 +480,17 @@ class StudentController extends Controller
 
     private function updateSchoolYearStudent($student, $from)
     {
+        $fetchTeacher = Teacher::where('school_year_id', $student->school_year_id)
+            ->where('level', $student->level)
+            ->where('grade', $student->grade)
+            ->where('section', $student->section)
+            ->where('co_adviser', 1)
+            ->first();
+        
         $check = SchoolYearStudent::where('student_id',$student->id)
             ->where('school_year_id',$student->school_year_id)
             ->where('sy_from',$student->sy_from)
             ->where('sy_to',$student->sy_to)
-            ->where('level',$student->level)
             ->first();
         if($check){
             $update = SchoolYearStudent::find($check->id);
@@ -487,6 +507,7 @@ class StudentController extends Controller
         $update->grade = $student->grade;
         $update->section = $student->section;
         $update->teacher_id = $student->teachers_id;
+        $update->co_teacher_id = $fetchTeacher ? $fetchTeacher->user_id : null;
         $update->status = $student->status;
 
         if($from!='update' && $from!='store'){
