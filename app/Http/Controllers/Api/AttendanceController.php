@@ -278,11 +278,11 @@ class AttendanceController extends Controller
     {
         $request->validate([
             'qr_code' => 'required',
-            'scanned_at' => 'required|date_format:Y-m-d H:i:s',
+            'scanned_at' => 'nullable|date_format:Y-m-d H:i:s',
         ]);
 
         $qr_code = $request->qr_code;
-        $scanned_at = $request->scanned_at;
+        $scanned_at = $request->scanned_at ?? date('Y-m-d H:i:s');
         $appKey = $request->header('X-APP-KEY');
         $deviceId = $request->header('X-DEVICE-ID');
         $stationIp = $request->header('X-STATION-IP');
