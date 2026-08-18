@@ -40,7 +40,7 @@ class AttendanceEmailJob implements ShouldQueue
         Config::set('mail.mailers.smtp.host', 'smtp.gmail.com');
         Config::set('mail.mailers.smtp.port', 587);
         Config::set('mail.mailers.smtp.username', 'sms-lnu@lnu.edu.ph');
-        Config::set('mail.mailers.smtp.password', 'wzbg ijxk cffv iasb');
+        Config::set('mail.mailers.smtp.password', 'ahip bkzw movz luob');
         Config::set('mail.mailers.smtp.encryption', 'tls');
         $id = $this->details['id'];
         $email = $this->details['email'];

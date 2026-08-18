@@ -269,17 +269,20 @@ class AttendanceController extends Controller
 
         $stationIp = $request->ipaddress;
         $deviceId = $station->uuid;
+        $scanned_at = date('Y-m-d H:i:s');
 
-        return $this->handleScan($deviceId, $stationIp, 'qr', $code);
+        return $this->handleScan($deviceId, $stationIp, 'qr', $code, $scanned_at);
     }
 
     public function scanQr(Request $request)
     {
         $request->validate([
             'qr_code' => 'required',
+            'scanned_at' => 'required|date_format:Y-m-d H:i:s',
         ]);
 
         $qr_code = $request->qr_code;
+        $scanned_at = $request->scanned_at;
         $appKey = $request->header('X-APP-KEY');
         $deviceId = $request->header('X-DEVICE-ID');
         $stationIp = $request->header('X-STATION-IP');
@@ -294,14 +297,14 @@ class AttendanceController extends Controller
             return response()->json(['success' => false, 'message' => 'Station IP missing.'], 411);
         }
 
-        return $this->handleScan($deviceId, $stationIp, 'qr', $qr_code);
+        return $this->handleScan($deviceId, $stationIp, 'qr', $qr_code, $scanned_at);
     }
 
-    private function handleScan($deviceId, $stationIp, $typeScan, $code)
+    private function handleScan($deviceId, $stationIp, $typeScan, $code, $scanned_at)
     {
         try {
             // Start the Database Transaction
-            return DB::transaction(function () use ($deviceId, $stationIp, $typeScan, $code) {
+            return DB::transaction(function () use ($deviceId, $stationIp, $typeScan, $code, $scanned_at) {
                 
                 // 1. Station Management
                 $station = Station::firstOrCreate(
@@ -323,7 +326,7 @@ class AttendanceController extends Controller
 
                 // 3. Global Duplicate Check (Removed station constraint to check across all devices)
                 $recentScan = Attendance::where('student_id', $student->id)
-                    ->where('scanned_at', '>=', Carbon::now()->subMinutes(30))
+                    ->where('scanned_at', '>=', Carbon::parse($scanned_at)->subMinutes(30))
                     ->first();
 
                 if ($recentScan) {
@@ -331,9 +334,7 @@ class AttendanceController extends Controller
                         'success' => false,
                         'message' => 'Duplicate scan detected. Please wait 30 minutes before scanning again.',
                     ], 409);
-                }
-
-                $scanned_at = date('Y-m-d H:i:s');
+                }                
 
                 // 4. Update Student
                 // $student = $this->updateStudent($student);
