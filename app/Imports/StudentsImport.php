@@ -41,6 +41,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
                 $level = $teacher ? $teacher->level : null;
                 $grade = $teacher ? $teacher->grade : null;
                 $section = $teacher ? $teacher->section : null;
+                $birthdate = empty($row['birthdate']) ? null : str_replace("'", "", $row['birthdate']);
 
                 // 3. Create or Update the Student
                 // Assuming 'student_id' is the unique identifier in your excel file
@@ -57,7 +58,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
                         'sex'            => $row['sex'] ?? 'Female',
                         'qr_code'        => $row['student_id'],
                         'teachers_id'    => $row['teacher_id'],
-                        'birthdate'      => str_replace("'", "", $row['birthdate']) ?? null,
+                        'birthdate'      => $birthdate,
                         // Link to the latest school year retrieved above
                         'school_year_id' => $school_year_id,
                         'sy_from'        => $sy_from,
