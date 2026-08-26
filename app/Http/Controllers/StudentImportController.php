@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\StudentGuardiansImport;
 use Illuminate\Http\Request;
 use App\Imports\StudentsImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -24,7 +25,7 @@ class StudentImportController extends Controller
     {
         // Validate the uploaded file
         $request->validate([
-            'excel_file' => 'required|mimes:xlsx,xls,csv|max:10240', // Max 10MB
+            'excel_file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
         try {
@@ -37,5 +38,16 @@ class StudentImportController extends Controller
             // Catch our custom "No School Year" exception or generic database errors
             return redirect()->back()->withErrors(['error' => 'Import failed: ' . $e->getMessage()]);
         }
+    }
+
+    public function importGuardians(Request $request) 
+    {
+        $request->validate([
+            'excel_file' => 'required|mimes:xlsx,csv,xls'
+        ]);
+
+        Excel::import(new StudentGuardiansImport, $request->file('excel_file'));
+
+        return redirect()->back()->with('success', 'Guardians imported successfully!');
     }
 }

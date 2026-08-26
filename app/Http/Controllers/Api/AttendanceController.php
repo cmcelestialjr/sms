@@ -17,6 +17,7 @@ use App\Models\SchoolYear;
 use App\Models\SmsQueue;
 use App\Models\Student;
 use App\Models\Station;
+use App\Models\StudentGuardian;
 use App\Models\Teacher;
 use App\Services\SchoolYearServices;
 use Illuminate\Http\Request;
@@ -401,28 +402,59 @@ class AttendanceController extends Controller
                 $formattedDate = date('M d, Y', strtotime($scanned_at));
                 $message = "{$name} {$message_type} in {$schoolName} at {$formattedTime} on {$formattedDate}";
 
-                $emailPayload = [
-                    'id' => $attendance->id,
-                    'email' => $student->email ?? '', 
-                    'message' => $message
-                ];
+                // Fetch all guardians for this student
+                $guardians = StudentGuardian::where('student_id', $student->id)->get();
 
-                dispatch(new AttendanceEmailJob($emailPayload))->onQueue('attendance_emails');                
+                if($guardians->count()>0){
+                    // Loop through each guardian and queue messages if they have contact info
+                    foreach ($guardians as $guardian) {
+                        
+                        // 1. Queue Email if the guardian has a valid email address
+                        if (!empty($guardian->email)) {
+                            $emailPayload = [
+                                'id' => $attendance->id,
+                                'email' => $guardian->email, 
+                                'message' => $message
+                            ];
+                            dispatch(new AttendanceEmailJob($emailPayload))->onQueue('attendance_emails');
+                        }
 
-                // $smsPayload = [
-                //     'send_sms' => true,
-                //     'phone_number' => $student->contact_no ?? '', 
-                //     'message' => $message
-                // ];
+                        // 2. Queue SMS if the guardian has a valid contact number
+                        if (!empty($guardian->contact_no)) {
+                            SmsQueue::create([
+                                'attendance_id' => $attendance->id,
+                                'phone_number' => $guardian->contact_no,
+                                'message' => $message,
+                                'status' => 'pending'
+                            ]);
+                        }
+                    }
+                }else{
+                    $emailPayload = [
+                        'id' => $attendance->id,
+                        'email' => $student->email ?? '', 
+                        'message' => $message
+                    ];
 
-                if (!empty($student->contact_no)) {
-                    SmsQueue::create([
-                        'attendance_id' => $attendance->id,
-                        'phone_number' => $student->contact_no,
-                        'message' => $message,
-                        'status' => 'pending'
-                    ]);
+                    dispatch(new AttendanceEmailJob($emailPayload))->onQueue('attendance_emails');                
+
+                    // $smsPayload = [
+                    //     'send_sms' => true,
+                    //     'phone_number' => $student->contact_no ?? '', 
+                    //     'message' => $message
+                    // ];
+
+                    if (!empty($student->contact_no)) {
+                        SmsQueue::create([
+                            'attendance_id' => $attendance->id,
+                            'phone_number' => $student->contact_no,
+                            'message' => $message,
+                            'status' => 'pending'
+                        ]);
+                    }
                 }
+
+                
 
                 $attendances = [];
 
