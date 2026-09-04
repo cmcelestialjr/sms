@@ -48,7 +48,17 @@ const ReportSf2 = ({setActiveTab}) => {
     }, [teacher, year, month]);
 
     useEffect(() => {
-        if (searchTeacherTerm.length < 1) return;
+        // Clear suggestions if the search bar is empty
+        if (searchTeacherTerm.length < 1) {
+            setTeacherSuggestions([]);
+            return;
+        }
+
+        // Abort the API call if a teacher was just selected from the dropdown
+        if (teacher && !Array.isArray(teacher)) {
+            return;
+        }
+
         const delayDebounce = setTimeout(async () => {
             try {
                 const authToken = localStorage.getItem("token");
@@ -62,7 +72,7 @@ const ReportSf2 = ({setActiveTab}) => {
             }
         }, 150);
         return () => clearTimeout(delayDebounce);
-    }, [searchTeacherTerm]);
+    }, [searchTeacherTerm, teacher]);
 
     const handlePdf = async (userRole, teacher, year, month) => { 
         try {
@@ -106,7 +116,10 @@ const ReportSf2 = ({setActiveTab}) => {
                             type="text"
                             placeholder="Search teacher"
                             value={searchTeacherTerm}
-                            onChange={(e) => setSearchTeacherTerm(e.target.value)}
+                            onChange={(e) => {
+                                setSearchTeacherTerm(e.target.value);
+                                setTeacher([]); // Reset the teacher state so the useEffect knows the user is searching again
+                            }}
                             className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>

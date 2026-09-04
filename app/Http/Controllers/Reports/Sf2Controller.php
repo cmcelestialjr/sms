@@ -30,7 +30,7 @@ class Sf2Controller extends Controller
         $month_name = date('F', strtotime($year.'-'.$month.'-01'));
         $day_start = 1;
         $day_end = date('t', strtotime("$year-$month-01"));
-
+        
         $comparison_date = $year . '-' . $month . '-01';
 
         $schoolYear = SchoolYear::whereDate('date_from', '<=', $comparison_date)
@@ -58,9 +58,10 @@ class Sf2Controller extends Controller
 
         if($userRole == 1){
             if(!empty($teacher)){
+                $teacher_default = Teacher::where('user_id', $teacher['id'])->first();
                 $teacher_id = $teacher['id'];
-                $grade = $teacher['teacher']['grade'];
-                $section = $teacher['teacher']['section'] ? $teacher['teacher']['section'] : 'NONE';
+                $grade = $teacher_default ? $teacher_default->grade : '';
+                $section = $teacher_default ? $teacher_default->section : 'NONE';
             }
         }
 
