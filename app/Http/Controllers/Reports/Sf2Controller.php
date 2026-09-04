@@ -58,7 +58,7 @@ class Sf2Controller extends Controller
 
         if($userRole == 1){
             if(!empty($teacher)){
-                $teacher_id = $teacher['id'];
+                $teacher_id = $teacher['id'] ?? $teacher['user_id'] ?? null;
                 $grade = $teacher['teacher']['grade'];
                 $section = $teacher['teacher']['section'] ? $teacher['teacher']['section'] : 'NONE';
             }
