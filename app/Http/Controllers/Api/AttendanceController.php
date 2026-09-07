@@ -792,7 +792,7 @@ class AttendanceController extends Controller
 
         // 2. If no logs, it's always an "In"
         if (!$lastLog) {
-            $type = $time > '14:00:00' ? 'Out' : 'In';
+            $type = $lastLog->type == 'In' ? 'Out' : 'In';
             return [
                 'result' => 'success',
                 'type' => $type,
