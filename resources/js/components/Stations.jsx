@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Layout from "./Layout";
-import { Edit, Plus } from "lucide-react";
+import { Edit, Plus, Wifi, WifiOff } from "lucide-react"; // Added Wifi icons
 import StationModal from './StationModal';
 import toastr from 'toastr';
-import Swal from "sweetalert2";
 import 'toastr/build/toastr.min.css';
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -25,6 +24,12 @@ const Stations = () => {
 
     useEffect(() => {
         fetchStations();
+        
+        // Optional: Auto-refresh the table every 30 seconds to see live status changes
+        const interval = setInterval(() => {
+            fetchStations();
+        }, 30000);
+        return () => clearInterval(interval);
     }, [page, search]);
 
     const handleSearch = (e) => {
@@ -109,19 +114,37 @@ const Stations = () => {
                         <thead className="bg-gray-100 text-xs text-gray-700 uppercase">
                             <tr>
                                 <th className="border border-gray-300 px-4 py-2">Station Name</th>
-                                <th className="border border-gray-300 px-4 py-2">Location</th>
-                                <th className="border border-gray-300 px-4 py-2">Action</th>
+                                <th className="border border-gray-300 px-4 py-2 text-center">Location</th>
+                                {/* NEW: Status Column */}
+                                <th className="border border-gray-300 px-4 py-2 text-center">Status</th>
+                                <th className="border border-gray-300 px-4 py-2 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {stations?.map((station) => (
-                                <tr key={station.id} className="border-t">
-                                    <td className="border border-gray-300 px-4 py-2">{station.station_name}</td>
+                                <tr key={station.id} className="border-t hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-2 font-medium text-gray-800">
+                                        {station.station_name}
+                                        <div className="text-xs text-gray-500 font-normal mt-0.5">{station.ipaddress}</div>
+                                    </td>
                                     <td className="border border-gray-300 px-4 py-2 text-center">{station.location}</td>
+                                    
+                                    {/* NEW: Live Status Badge */}
+                                    <td className="border border-gray-300 px-4 py-2 text-center">
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                                            station.status === 'Online' 
+                                                ? 'bg-green-50 text-green-700 border-green-200' 
+                                                : 'bg-gray-100 text-gray-600 border-gray-200'
+                                        }`}>
+                                            {station.status === 'Online' ? <Wifi size={12} /> : <WifiOff size={12} />}
+                                            {station.status ?? 'Offline'}
+                                        </span>
+                                    </td>
+
                                     <td className="border border-gray-300 px-4 py-2 text-center">
                                         <button
                                             onClick={() => handleEdit(station)}
-                                            className="flex items-center gap-1 text-blue-600 hover:underline cursor-pointer"
+                                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                                         >
                                             <Edit size={16} /> Edit
                                         </button>
