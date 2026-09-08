@@ -97,4 +97,28 @@ class StationController extends Controller
 
         return response()->json($station);
     }
+
+    public function ping(Request $request)
+    {
+        $appKey = $request->header('X-APP-KEY');
+        $deviceId = $request->header('X-DEVICE-ID');
+        $stationIp = $request->header('X-STATION-IP') ?: $request->ip();
+
+        $expectedKey = env('ATTENDANCE_API_KEY', 'ILS_LNU_SCANNER_2026');
+
+        if ($appKey !== $expectedKey || !$deviceId) {
+            return response()->json(['success' => false], 403);
+        }
+
+        // Update the timestamp to exactly right now
+        Station::updateOrCreate(
+            ['uuid' => $deviceId],
+            [
+                'ipaddress' => $stationIp,
+                'last_active_at' => now(),
+            ]
+        );
+
+        return response()->json(['success' => true]);
+    }
 }

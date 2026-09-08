@@ -37,6 +37,8 @@ Route::get('/stations/{id}', [StationController::class, 'show']);
 // Route::put('/stations/{id}', [StationController::class, 'update']);
 // Route::delete('/stations/{id}', [StationController::class, 'destroy']);
 
+Route::post('/stations/ping', [StationController::class, 'ping']);
+
 Route::prefix('sms')->group(function () {
     Route::get('/pending', [SmsGatewayController::class, 'fetchPending']);
     Route::post('/status', [SmsGatewayController::class, 'updateStatus']);
