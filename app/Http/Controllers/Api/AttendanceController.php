@@ -288,7 +288,9 @@ class AttendanceController extends Controller
         $deviceId = $request->header('X-DEVICE-ID');
         $stationIp = $request->header('X-STATION-IP');
 
-        if ($appKey !== env('ATTENDANCE_API_KEY')) {
+        $expectedKey = env('ATTENDANCE_API_KEY', 'ILS_LNU_SCANNER_2026');
+
+        if ($appKey !== $expectedKey) {
             return response()->json(['success' => false, 'message' => 'Unauthorized access.'], 403);
         }
         if (!$deviceId) {
@@ -790,21 +792,21 @@ class AttendanceController extends Controller
             ];
         }
 
-        // 2. If no logs, it's always an "In"
+        // 2. If no logs"
         if (!$lastLog) {
-            $type = $lastLog->type == 'In' ? 'Out' : 'In';
+            $type = $time > '14:00:00' ? 'Out' : 'In';
             return [
                 'result' => 'success',
                 'type' => $type,
                 'message' => 'Success!',
-                'message_type' => "has LOGGED IN"
+                'message_type' => "has LOGGED ".$type
             ];
         }
 
         // 3. Toggle type based on the last log
-        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';   
+        $newType = ($lastLog->type === 'In') ? 'Out' : 'In';
         
-        $newType = $time > '14:00:00' ? 'Out' : $newType;
+        // $newType = $time > '14:00:00' ? 'Out' : $newType;
         
         $msgType = ($newType === 'In') ? "has LOGGED IN" : "has LOGGED OUT";
 
