@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class AttendanceController extends Controller
 {
@@ -402,7 +403,10 @@ class AttendanceController extends Controller
                 
                 $formattedTime = date('h:i:s A', strtotime($scanned_at));
                 $formattedDate = date('M d, Y', strtotime($scanned_at));
-                $message = "{$name} {$message_type} in {$schoolName} at {$formattedTime} on {$formattedDate}";
+                
+                $trackingId = strtoupper(Str::random(5));
+
+                $message = "{$name} {$message_type} in {$schoolName} at {$formattedTime} on {$formattedDate}. Ref: {$trackingId}";
 
                 // Fetch all guardians for this student
                 $guardians = StudentGuardian::where('student_id', $student->id)->get();
