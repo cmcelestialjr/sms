@@ -13,6 +13,7 @@ class Student extends Model
 
     protected $fillable = [
         'student_id',
+        'access_code',
         'lrn_no',
         'lastname',
         'firstname',
@@ -55,7 +56,12 @@ class Student extends Model
                     ? intval(substr($last->student_id, 4)) + 1
                     : 1;
 
-                $student->student_id = $year .  str_pad($number, 4, '0', STR_PAD_LEFT);
+                $student->student_id = $year . str_pad($number, 4, '0', STR_PAD_LEFT);
+            }
+
+            // Auto-generate 6-digit access code if not set
+            if (empty($student->access_code)) {
+                $student->access_code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             }
         });
     }
@@ -64,25 +70,29 @@ class Student extends Model
     {
         return $this->hasMany(Attendance::class, 'student_id', 'id');
     }
+
     public function attendanceDailySummary(): HasMany
     {
         return $this->hasMany(AttendanceDailySummary::class, 'student_id', 'id');
     }
+
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class, 'teachers_id', 'user_id');
     }
+
     public function schoolYearStudents()
     {
         return $this->hasMany(SchoolYearStudent::class, 'student_id', 'id');
     }
+
     public function absences()
     {
         return $this->hasMany(Absence::class, 'student_id', 'id');
     }
+
     public function schoolYear(): BelongsTo
     {
         return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
     }
 }
-
