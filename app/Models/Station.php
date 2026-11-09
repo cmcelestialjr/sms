@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Station extends Model
 {
@@ -18,6 +17,10 @@ class Station extends Model
         'last_active_at',
     ];
 
+    protected $casts = [
+        'last_active_at' => 'datetime',
+    ];
+
     protected $appends = ['status']; 
 
     public function getStatusAttribute()
@@ -26,8 +29,6 @@ class Station extends Model
             return 'Offline';
         }
 
-        // If the tablet checked in within the last 2 minutes, it is Online.
-        $lastActive = Carbon::parse($this->last_active_at);
-        return $lastActive->diffInMinutes(now()) <= 2 ? 'Online' : 'Offline';
+        return $this->last_active_at->diffInMinutes(now()) <= 2 ? 'Online' : 'Offline';
     }
 }
