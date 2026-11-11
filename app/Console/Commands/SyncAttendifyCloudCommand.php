@@ -53,6 +53,7 @@ class SyncAttendifyCloudCommand extends Command
                 'id'             => $r->id,
                 'user_id'        => $r->user_id,
                 'id_no'          => $r->id_no,
+                'access_code'    => $r->access_code,
                 'lastname'       => $r->lastname,
                 'firstname'      => $r->firstname,
                 'middlename'     => $r->middlename,

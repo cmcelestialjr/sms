@@ -13,6 +13,7 @@ class Teacher extends Model
 
     protected $fillable = [
         'id_no',
+        'access_code',
         'lastname',
         'firstname',
         'middlename',
@@ -39,6 +40,15 @@ class Teacher extends Model
         'active_students_count',
         'active_students_list',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($teacher) {
+            if (empty($teacher->access_code)) {
+                $teacher->access_code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            }
+        });
+    }
 
     public function attendances()
     {
