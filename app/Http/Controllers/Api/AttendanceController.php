@@ -7,6 +7,7 @@ use App\Jobs\AbsencesJob;
 use App\Jobs\AttendanceEmailJob;
 use App\Jobs\SendSmsAttendanceJob;
 use App\Jobs\SendSmsAttendanceJob1;
+use App\Jobs\SyncAttendifyCloudJob;
 use App\Models\Absence;
 use App\Models\Attendance;
 use App\Models\AttendanceDailySummary;
@@ -379,7 +380,13 @@ class AttendanceController extends Controller
                         : asset('images/no-image-icon.png');
                 }
 
-                dispatch(new AbsencesJob($student->id, $scanned_at))->onQueue('absences');                
+                dispatch(new AbsencesJob($student->id, $scanned_at))
+                    ->onQueue('absences')
+                    ->afterCommit();  
+                
+                SyncAttendifyCloudJob::dispatch()
+                    ->onQueue('cloud_sync')
+                    ->afterCommit();
 
                 // $this->sendSmsAttendance($attendance, $getType['message_type'], $scanned_at);
 
@@ -1118,6 +1125,10 @@ class AttendanceController extends Controller
                     );
                 }
             });
+
+            SyncAttendifyCloudJob::dispatch()
+                ->onQueue('cloud_sync')
+                ->afterCommit();
 
             return response()->json([
                 'message' => 'Attendance updated successfully'

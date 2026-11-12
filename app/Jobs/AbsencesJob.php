@@ -12,11 +12,27 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AbsencesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * Retry up to 3 times if a database lock occurs.
+     */
+    public int $tries = 3;
+
+    /**
+     * Wait 5 seconds before retrying.
+     */
+    public int $backoff = 5;
+
+    /**
+     * Prevent the worker from hanging indefinitely.
+     */
+    public int $timeout = 60;
 
     protected $student_id;
     protected $scanned_at;
@@ -29,100 +45,76 @@ class AbsencesJob implements ShouldQueue
 
     public function handle(): void
     {
-        $scanned_at = $this->scanned_at;
+        $scannedDate = Carbon::parse($this->scanned_at);
+        $dateString = $scannedDate->toDateString();
 
-        $sy = SchoolYear::where('date_from', '<=', $scanned_at)
-            ->where('date_to', '>=', $scanned_at)
-            ->first();
+        // 1. Always remove the absence record for the student who just scanned (Fast: < 2ms)
+        Absence::where('student_id', $this->student_id)
+            ->where('date', $dateString)
+            ->delete();
 
-        if($sy){
-            $sy_from = $sy->sy_from;
-            $sy_to = $sy->sy_to;
-            $date_from = Carbon::parse($sy->date_from);
-            $date_to = Carbon::parse($sy->date_to);
-
-            
-            // if($date_from<=$scanned_at && $date_to>=$scanned_at){
-            //     DB::statement("
-            //         INSERT INTO absences (student_id, date, updated_at, created_at)
-            //         SELECT student_id, ?, NOW(), NOW()
-            //         FROM school_year_students
-            //         WHERE sy_from = ? AND sy_to = ?
-            //         AND student_id NOT IN (SELECT student_id FROM absences WHERE date = ?)
-            //     ", [$scanned_at, $sy_from, $sy_to, $scanned_at]);
-            // }
-
-            $students = SchoolYearStudent::where('sy_from', '=', $sy_from)
-                ->where('sy_to', '=', $sy_to)
-                ->whereNotExists(function ($query) use ($scanned_at) {
-                    $query->select(DB::raw(1))
-                        ->from('attendances')
-                        ->whereRaw('attendances.student_id = school_year_students.student_id')
-                        ->whereDate('attendances.scanned_at', '=', $scanned_at);
-                })
-                ->pluck('student_id');
-
-            $nonRepeating = HolidayDate::where('repeat', '!=', 'yes')
-                ->whereBetween('date', [$date_from, $date_to])
-                ->pluck('date')
-                ->toArray();
-
-            $repeating = HolidayDate::where('repeat', 'yes')
-                ->get()
-                ->filter(function ($holiday) use ($date_from, $date_to) {
-                    $original = Carbon::parse($holiday->date);
-                    $adjusted = Carbon::create($date_from->year, $original->month, $original->day);
-
-                    return $adjusted->between($date_from, $date_to);
-                })
-                ->map(function ($holiday) use ($date_from) {
-                    $original = Carbon::parse($holiday->date);
-                    return Carbon::create($date_from->year, $original->month, $original->day)->toDateString();
-                })
-                ->toArray();
-
-            $holiday_dates = array_merge($nonRepeating, $repeating);
-
-            $absences = [];
-
-            while ($date_from <= $date_to) {
-
-                if ($date_from->isWeekend()) {
-                    $date_from->addDay();
-                    continue;
-                }
-
-                if (in_array($date_from->toDateString(), $holiday_dates)) {
-                    $date_from->addDay();
-                    continue;
-                }
-
-                foreach ($students as $student_id) {
-                    $absences[] = [
-                        'student_id' => $student_id,
-                        'date' => $date_from->toDateString(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-
-                if (count($absences) >= 1000) {
-                    Absence::insertOrIgnore($absences);
-                    $absences = [];
-                }
-
-                $date_from->addDay();
-            }
-
-            if (count($absences) > 0) {
-                Absence::insertOrIgnore($absences);
-            }
-
-            Absence::whereIn('date', $holiday_dates)->delete();
+        // 2. Skip generating absences if the scan date is a weekend
+        if ($scannedDate->isWeekend()) {
+            return;
         }
 
-        Absence::where('student_id', $this->student_id)
-            ->where('date', $scanned_at)
-            ->delete();
+        // 3. Only seed the day's absences ONCE per date (prevents 500 heavy loops during morning rush)
+        $dailyLockKey = "absences_seeded_{$dateString}";
+        if (!Cache::add($dailyLockKey, true, now()->addHours(24))) {
+            return;
+        }
+
+        // 4. Verify the date falls within an active School Year
+        $sy = SchoolYear::where('date_from', '<=', $dateString)
+            ->where('date_to', '>=', $dateString)
+            ->first();
+
+        if (!$sy) {
+            return;
+        }
+
+        // 5. Check if $dateString is a non-repeating or repeating holiday
+        $isNonRepeatingHoliday = HolidayDate::where('repeat', '!=', 'yes')
+            ->whereDate('date', $dateString)
+            ->exists();
+
+        $isRepeatingHoliday = HolidayDate::where('repeat', 'yes')
+            ->whereMonth('date', $scannedDate->month)
+            ->whereDay('date', $scannedDate->day)
+            ->exists();
+
+        if ($isNonRepeatingHoliday || $isRepeatingHoliday) {
+            Absence::where('date', $dateString)->delete();
+            return;
+        }
+
+        // 6. Find enrolled students who have NOT scanned on $dateString
+        $absentStudentIds = SchoolYearStudent::where('sy_from', $sy->sy_from)
+            ->where('sy_to', $sy->sy_to)
+            ->where('student_id', '!=', $this->student_id)
+            ->whereNotExists(function ($query) use ($dateString) {
+                $query->select(DB::raw(1))
+                    ->from('attendances')
+                    ->whereRaw('attendances.student_id = school_year_students.student_id')
+                    ->whereDate('attendances.scanned_at', $dateString);
+            })
+            ->pluck('student_id');
+
+        if ($absentStudentIds->isEmpty()) {
+            return;
+        }
+
+        // 7. Insert absences ONLY for $dateString in safe chunks
+        $now = now();
+        $rows = $absentStudentIds->map(fn($studentId) => [
+            'student_id' => $studentId,
+            'date'       => $dateString,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->toArray();
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            Absence::insertOrIgnore($chunk);
+        }
     }
 }
