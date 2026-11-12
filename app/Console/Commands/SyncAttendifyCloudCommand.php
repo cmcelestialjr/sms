@@ -73,6 +73,7 @@ class SyncAttendifyCloudCommand extends Command
             $this->syncTable('stations', Station::class, $state, fn($r) => [
                 'id'           => $r->id,
                 'uuid'         => $r->uuid,
+                'name'         => $r->name,
                 'station_name' => $r->station_name,
                 'ipaddress'    => $r->ipaddress,
                 'location'     => $r->location,

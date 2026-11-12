@@ -11,6 +11,7 @@ class Station extends Model
 
     protected $fillable = [
         'uuid',
+        'name',
         'station_name',
         'ipaddress',
         'location',
