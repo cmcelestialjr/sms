@@ -14,13 +14,17 @@ use App\Models\StudentGuardian;
 use App\Models\Teacher;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class SyncAttendifyCloudCommand extends Command
 {
-    protected $signature = 'attendify:sync-cloud {--fresh : Re-sync all records from the beginning}';
-    protected $description = 'Sync local Laravel records to Supabase using per-table updated_at watermarks';
+    protected $signature = 'attendify:sync-cloud 
+                            {--fresh : Re-sync all records from the beginning}
+                            {--fresh-absences : Re-sync the absences table from the beginning}';
+
+    protected $description = 'Sync local Laravel records with Supabase using per-table updated_at watermarks';
 
     private string $stateFile = 'supabase_sync_state.json';
 
@@ -29,6 +33,11 @@ class SyncAttendifyCloudCommand extends Command
         $state = $this->loadSyncState();
 
         try {
+            // STEP 0: Pull any user-changed 6-digit access codes from Supabase FIRST
+            // so Local Laravel never overwrites a parent's or teacher's custom PIN.
+            $this->pullChangedAccessCodesFromCloud('students', $state);
+            $this->pullChangedAccessCodesFromCloud('teachers', $state);
+
             // 1. Reference Tables
             $this->syncTable('school_terms', SchoolTerm::class, $state, fn($r) => [
                 'id'              => $r->id,
@@ -50,24 +59,25 @@ class SyncAttendifyCloudCommand extends Command
             ]);
 
             $this->syncTable('teachers', Teacher::class, $state, fn($r) => [
-                'id'             => $r->id,
-                'user_id'        => $r->user_id,
-                'id_no'          => $r->id_no,
-                'access_code'    => $r->access_code,
-                'lastname'       => $r->lastname,
-                'firstname'      => $r->firstname,
-                'middlename'     => $r->middlename,
-                'extname'        => $r->extname,
-                'contact_no'     => $r->contact_no,
-                'email'          => $r->email,
-                'position'       => $r->position,
-                'school_year_id' => $r->school_year_id,
-                'level'          => $r->level,
-                'grade'          => $r->grade,
-                'section'        => $r->section,
-                'status'         => $r->status,
-                'photo'          => $r->photo,
-                'updated_at'     => optional($r->updated_at)->toIso8601String(),
+                'id'               => $r->id,
+                'user_id'          => $r->user_id,
+                'id_no'            => $r->id_no,
+                'access_code'      => $r->access_code,
+                'must_change_code' => (bool) ($r->must_change_code ?? true),
+                'lastname'         => $r->lastname,
+                'firstname'        => $r->firstname,
+                'middlename'       => $r->middlename,
+                'extname'          => $r->extname,
+                'contact_no'       => $r->contact_no,
+                'email'            => $r->email,
+                'position'         => $r->position,
+                'school_year_id'   => $r->school_year_id,
+                'level'            => $r->level,
+                'grade'            => $r->grade,
+                'section'          => $r->section,
+                'status'           => $r->status,
+                'photo'            => $r->photo,
+                'updated_at'       => optional($r->updated_at)->toIso8601String(),
             ]);
 
             $this->syncTable('stations', Station::class, $state, fn($r) => [
@@ -82,31 +92,32 @@ class SyncAttendifyCloudCommand extends Command
 
             // 2. Students & Guardians
             $this->syncTable('students', Student::class, $state, fn($r) => [
-                'id'             => $r->id,
-                'student_id'     => $r->student_id,
-                'access_code'    => $r->access_code,
-                'lrn_no'         => $r->lrn_no,
-                'lastname'       => $r->lastname,
-                'firstname'      => $r->firstname,
-                'middlename'     => $r->middlename,
-                'extname'        => $r->extname,
-                'contact_no'     => $r->contact_no,
-                'email'          => $r->email,
-                'qr_code'        => $r->qr_code,
-                'rfid_tag'       => $r->rfid_tag,
-                'sex'            => $r->sex,
-                'birthdate'      => $r->birthdate,
-                'address'        => $r->address,
-                'photo'          => $r->photo,
-                'school_year_id' => $r->school_year_id,
-                'sy_from'        => $r->sy_from,
-                'sy_to'          => $r->sy_to,
-                'level'          => $r->level,
-                'grade'          => $r->grade,
-                'section'        => $r->section,
-                'teachers_id'    => $r->teachers_id,
-                'status'         => $r->status,
-                'updated_at'     => optional($r->updated_at)->toIso8601String(),
+                'id'               => $r->id,
+                'student_id'       => $r->student_id,
+                'access_code'      => $r->access_code,
+                'must_change_code' => (bool) ($r->must_change_code ?? true),
+                'lrn_no'           => $r->lrn_no,
+                'lastname'         => $r->lastname,
+                'firstname'        => $r->firstname,
+                'middlename'       => $r->middlename,
+                'extname'          => $r->extname,
+                'contact_no'       => $r->contact_no,
+                'email'            => $r->email,
+                'qr_code'          => $r->qr_code,
+                'rfid_tag'         => $r->rfid_tag,
+                'sex'              => $r->sex,
+                'birthdate'        => $r->birthdate,
+                'address'          => $r->address,
+                'photo'            => $r->photo,
+                'school_year_id'   => $r->school_year_id,
+                'sy_from'          => $r->sy_from,
+                'sy_to'            => $r->sy_to,
+                'level'            => $r->level,
+                'grade'            => $r->grade,
+                'section'          => $r->section,
+                'teachers_id'      => $r->teachers_id,
+                'status'           => $r->status,
+                'updated_at'       => optional($r->updated_at)->toIso8601String(),
             ]);
 
             $this->syncTable('student_guardians', StudentGuardian::class, $state, fn($r) => [
@@ -176,14 +187,18 @@ class SyncAttendifyCloudCommand extends Command
                 'updated_at'     => optional($r->updated_at)->toIso8601String(),
             ]);
 
+            if ($this->option('fresh-absences')) {
+                unset($state['absences']);
+            }
+
             $this->syncTable('absences', Absence::class, $state, fn($r) => [
                 'id'         => $r->id,
                 'student_id' => $r->student_id,
                 'date'       => $r->date,
-                'updated_at' => optional($r->updated_at)->toIso8601String(),
+                'updated_at' => optional($r->updated_at)->toIso8601String() ?? now()->toIso8601String(),
             ]);
 
-            $this->info('All modified tables synced to Supabase.');
+            $this->info('All modified tables synced with Supabase.');
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
@@ -192,17 +207,94 @@ class SyncAttendifyCloudCommand extends Command
         }
     }
 
+    /**
+     * Pulls any `students` or `teachers` rows where the user changed their `access_code`
+     * in Supabase (`must_change_code = false`) since the last cloud pull watermark.
+     */
+    private function pullChangedAccessCodesFromCloud(string $table, array &$state): void
+    {
+        $pullKey = "cloud_pin_pull_{$table}";
+        $lastCloudPull = $state[$pullKey] ?? null;
+
+        $queryParams = [
+            'select'           => 'id,access_code,must_change_code,updated_at',
+            'must_change_code' => 'eq.false',
+            'order'            => 'updated_at.asc',
+        ];
+
+        if (!empty($lastCloudPull)) {
+            $queryParams['updated_at'] = 'gt.' . $lastCloudPull;
+        }
+
+        $response = Http::withHeaders([
+            'apikey'        => env('SUPABASE_SERVICE_KEY'),
+            'Authorization' => 'Bearer ' . env('SUPABASE_SERVICE_KEY'),
+        ])->timeout(15)->get(
+            rtrim(env('SUPABASE_URL'), '/') . "/rest/v1/{$table}",
+            $queryParams
+        );
+
+        if (!$response->successful()) {
+            return;
+        }
+
+        $cloudRows = $response->json();
+        if (empty($cloudRows) || !is_array($cloudRows)) {
+            return;
+        }
+
+        $updatedCount = 0;
+        $maxCloudUpdatedAt = $lastCloudPull;
+
+        foreach ($cloudRows as $row) {
+            $id = $row['id'] ?? null;
+            $newCode = isset($row['access_code']) ? trim((string) $row['access_code']) : '';
+            $cloudUpdatedAt = $row['updated_at'] ?? null;
+
+            if ($cloudUpdatedAt && ($maxCloudUpdatedAt === null || $cloudUpdatedAt > $maxCloudUpdatedAt)) {
+                $maxCloudUpdatedAt = $cloudUpdatedAt;
+            }
+
+            if ($id && $newCode !== '') {
+                // Update local MySQL without bumping `updated_at` so it doesn't trigger an unnecessary re-push
+                $affected = DB::table($table)
+                    ->where('id', $id)
+                    ->where(function ($q) use ($newCode) {
+                        $q->where('access_code', '!=', $newCode)
+                          ->orWhere('must_change_code', '!=', false);
+                    })
+                    ->update([
+                        'access_code'      => $newCode,
+                        'must_change_code' => false,
+                    ]);
+
+                $updatedCount += $affected;
+            }
+        }
+
+        if ($maxCloudUpdatedAt !== null) {
+            $state[$pullKey] = $maxCloudUpdatedAt;
+            Storage::disk('local')->put($this->stateFile, json_encode($state, JSON_PRETTY_PRINT));
+        }
+
+        if ($updatedCount > 0) {
+            $this->line(" ↺ [{$table}]: Pulled {$updatedCount} updated access code(s) from Supabase");
+        }
+    }
+
     private function syncTable(string $table, string $modelClass, array &$state, callable $mapper): void
     {
-        $lastSync = ($this->option('fresh') || empty($state[$table]))
-            ? Carbon::createFromTimestamp(0)
-            : Carbon::parse($state[$table]);
+        $isFreshTable = $this->option('fresh') || empty($state[$table]);
 
         $tableSyncStartedAt = now()->subSeconds(5);
 
-        $records = $modelClass::where('updated_at', '>=', $lastSync)
-            ->orderBy('updated_at', 'asc')
-            ->get();
+        $query = $modelClass::query();
+        if (!$isFreshTable) {
+            $lastSync = Carbon::parse($state[$table]);
+            $query->where('updated_at', '>=', $lastSync);
+        }
+
+        $records = $query->orderBy('id', 'asc')->get();
 
         if ($records->isEmpty()) {
             return;
@@ -226,7 +318,6 @@ class SyncAttendifyCloudCommand extends Command
             }
         }
 
-        // Save this table's watermark immediately so if a later table fails, this one won't re-run
         $state[$table] = $tableSyncStartedAt->toDateTimeString();
         Storage::disk('local')->put($this->stateFile, json_encode($state, JSON_PRETTY_PRINT));
 

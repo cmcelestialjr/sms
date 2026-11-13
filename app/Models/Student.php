@@ -14,6 +14,7 @@ class Student extends Model
     protected $fillable = [
         'student_id',
         'access_code',
+        'must_change_code',
         'lrn_no',
         'lastname',
         'firstname',
@@ -41,6 +42,10 @@ class Student extends Model
         'status'
     ];
 
+    protected $casts = [
+        'must_change_code' => 'boolean',
+    ];
+
     protected static function booted()
     {
         static::creating(function ($student) {
@@ -59,9 +64,12 @@ class Student extends Model
                 $student->student_id = $year . str_pad($number, 4, '0', STR_PAD_LEFT);
             }
 
-            // Auto-generate 6-digit access code if not set
             if (empty($student->access_code)) {
                 $student->access_code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            }
+
+            if ($student->must_change_code === null) {
+                $student->must_change_code = true;
             }
         });
     }
