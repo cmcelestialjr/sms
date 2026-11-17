@@ -50,15 +50,15 @@ class AttendifyAccessCodeMail extends Mailable
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 1 • HOW TO DOWNLOAD THE APP',
                 'title'    => '3 Easy Steps to Download Attendify.apk',
-                'filename' => '1-Attendify-Teacher-APK-Download-Guide.jpg',
-                'path'     => public_path('images/pubmats/teacher-apk-download-guide.jpg'),
+                'filename' => '1-Attendify-Teacher-APK-Download-Guide.jpeg',
+                'path'     => public_path('images/pubmats/teacher-apk-download-guide.jpeg'),
             ];
         } else {
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 1 • HOW TO DOWNLOAD THE APP',
                 'title'    => '3 Easy Steps to Download Attendify.apk',
-                'filename' => '1-Attendify-Student-Parent-APK-Download-Guide.jpg',
-                'path'     => public_path('images/pubmats/student-parent-apk-download-guide.jpg'),
+                'filename' => '1-Attendify-Student-Parent-APK-Download-Guide.jpeg',
+                'path'     => public_path('images/pubmats/student-parent-apk-download-guide.jpeg'),
             ];
         }
 
@@ -66,8 +66,8 @@ class AttendifyAccessCodeMail extends Mailable
         $guides[] = [
             'step'     => 'PICTURE GUIDE 2 • HOW TO INSTALL ON YOUR PHONE',
             'title'    => 'Step-by-Step Android Installation Guide',
-            'filename' => '2-Attendify-APK-Installation-Guide.jpg',
-            'path'     => public_path('images/pubmats/apk-installation-guide.jpg'),
+            'filename' => '2-Attendify-APK-Installation-Guide.jpeg',
+            'path'     => public_path('images/pubmats/apk-installation-guide.jpeg'),
         ];
 
         // GUIDE 3: How to Log In & Use the Portal (Role-Specific)
@@ -75,15 +75,15 @@ class AttendifyAccessCodeMail extends Mailable
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 3 • HOW TO LOG IN & USE THE APP',
                 'title'    => 'Teacher Portal Quick Guide',
-                'filename' => '3-Attendify-Teacher-Portal-Guide.jpg',
-                'path'     => public_path('images/pubmats/teacher-portal-quick-guide.jpg'),
+                'filename' => '3-Attendify-Teacher-Portal-Guide.jpeg',
+                'path'     => public_path('images/pubmats/teacher-portal-quick-guide.jpeg'),
             ];
         } else {
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 3 • HOW TO LOG IN & USE THE APP',
                 'title'    => 'Student & Parent Portal Quick Guide',
-                'filename' => '3-Attendify-Student-Parent-Portal-Guide.jpg',
-                'path'     => public_path('images/pubmats/student-parent-quick-guide.jpg'),
+                'filename' => '3-Attendify-Student-Parent-Portal-Guide.jpeg',
+                'path'     => public_path('images/pubmats/student-parent-quick-guide.jpeg'),
             ];
         }
 
@@ -91,8 +91,8 @@ class AttendifyAccessCodeMail extends Mailable
         $guides[] = [
             'step'     => 'PICTURE GUIDE 4 • PROFILE & CHANGING YOUR PIN',
             'title'    => 'How to Change Your 6-Digit Code & View Tutorials',
-            'filename' => '4-Attendify-Profile-Tab-Guide.jpg',
-            'path'     => public_path('images/pubmats/profile-tab-quick-guide.jpg'),
+            'filename' => '4-Attendify-Profile-Tab-Guide.jpeg',
+            'path'     => public_path('images/pubmats/profile-tab-quick-guide.jpeg'),
         ];
 
         return array_values(array_filter($guides, fn ($g) => is_file($g['path'])));
