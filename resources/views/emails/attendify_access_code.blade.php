@@ -65,11 +65,6 @@
                                         <div style="font-size: 20px; font-weight: bold; color: #050D2E; margin-top: 4px; font-family: monospace;">
                                             {{ $idNumber }}
                                         </div>
-                                        @if(!empty($lrnNo))
-                                            <div style="font-size: 13px; color: #475569; margin-top: 3px;">
-                                                Or LRN: <strong>{{ $lrnNo }}</strong>
-                                            </div>
-                                        @endif
                                     </td>
                                 </tr>
                                 <tr>
@@ -175,7 +170,7 @@
 
                             <!-- Need Help Box -->
                             <div style="background-color: #f1f5f9; border-radius: 12px; padding: 14px 16px; margin-top: 12px; font-size: 13.5px; color: #334155; line-height: 1.5;">
-                                <strong>Need Help Installing?</strong> Feel free to ask your child's Homeroom Adviser or visit the <strong>LNU-ILS Office</strong> (Email: <strong>lnuilsedu@gmail.com</strong> • Trunkline loc. 350) and we will gladly assist you!
+                                <strong>Need Help Installing?</strong> Feel free to ask your child's Homeroom Adviser or visit the <strong>LNU-ILS Office</strong> (Email: <strong>attendify@lnu.edu.ph</strong>) and we will gladly assist you!
                             </div>
                         </td>
                     </tr>
