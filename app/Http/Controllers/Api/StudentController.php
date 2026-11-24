@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -38,6 +39,12 @@ class StudentController extends Controller
         $role_id = $user->role_id;
         $user_id = $user->id;
 
+        $adviserIds = [$user_id];
+        if ($role_id == 3) {
+            $resolved = $this->resolveAdviser((int) $user_id);
+            $adviserIds = array_values(array_unique([$user_id, $resolved['main_teacher_id']]));
+        }
+
         $students = Student::with('teacher')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -49,39 +56,40 @@ class StudentController extends Controller
                         ->orWhere('grade', 'like', "%$search%")
                         ->orWhere('section', 'like', "%$search%");
                 });
-            })->whereHas('schoolYearStudents', function ($q) use ($schoolYear, $role_id, $user_id) {
-                if(!empty($schoolYear)){
-                    $q->where('school_year_id', $schoolYear);                    
+            })
+            ->whereHas('schoolYearStudents', function ($q) use ($schoolYear, $role_id, $user_id) {
+                if (!empty($schoolYear)) {
+                    $q->where('school_year_id', $schoolYear);
                 }
 
-                if($role_id==3){
-                    $q->where(function ($q) use ($user_id) {
-                        $q->where('teacher_id', $user_id);
-                        $q->orWhere('co_teacher_id', $user_id);
+                if ($role_id == 3) {
+                    $q->where(function ($sub) use ($user_id) {
+                        $sub->where('teacher_id', $user_id)
+                            ->orWhere('co_teacher_id', $user_id);
                     });
                 }
             });
-        
-        if($role_id==3){
-            if ($request->has('status')){
-                if($request->status=='Approved'){
-                    $students->where('teacher_id_approved',$user->id);
-                }elseif($request->status=='Requested'){
-                    $students->where('teacher_id_requested',$user->id);
-                }elseif($request->status=='Pending'){
-                    $students->where('teacher_id_pending',$user->id);
-                }else{                    
+
+        if ($role_id == 3) {
+            if ($request->has('status')) {
+                if ($request->status == 'Approved') {
+                    $students->whereIn('teacher_id_approved', $adviserIds);
+                } elseif ($request->status == 'Requested') {
+                    $students->whereIn('teacher_id_requested', $adviserIds);
+                } elseif ($request->status == 'Pending') {
+                    $students->whereIn('teacher_id_pending', $adviserIds);
+                } else {
                     $status = $request->status;
                     $students->where('status', $status);
                 }
             }
-        }else{
-            if ($request->has('status')){
+        } else {
+            if ($request->has('status')) {
                 $status = $request->status;
                 $students->where('status', $status);
             }
         }
-        
+
         $students = $students->orderBy('lastname')->paginate(10);
 
         $students->getCollection()->transform(function ($student) {
@@ -107,25 +115,32 @@ class StudentController extends Controller
         $user = Auth::user();
 
         $students = Student::with('teacher')
-        ->when($search, function ($query, $search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('firstname', 'like', "%$search%")
-                    ->orWhere('lastname', 'like', "%$search%")
-                    ->orWhere('middlename', 'like', "%{$search}%")
-                    ->orWhere('student_id', 'like', "%$search%")
-                    ->orWhere('lrn_no', 'like', "%$search%")
-                    ->orWhere('grade', 'like', "%$search%")
-                    ->orWhere('section', 'like', "%$search%");
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('firstname', 'like', "%$search%")
+                        ->orWhere('lastname', 'like', "%$search%")
+                        ->orWhere('middlename', 'like', "%{$search}%")
+                        ->orWhere('student_id', 'like', "%$search%")
+                        ->orWhere('lrn_no', 'like', "%$search%")
+                        ->orWhere('grade', 'like', "%$search%")
+                        ->orWhere('section', 'like', "%$search%");
+                });
             });
-        });
-        
-        if($request->has('f')){
-            if($user->role_id==3 && $request->f=='message'){
-                $students->where('teachers_id',$user->id);
+
+        if ($request->has('f')) {
+            if ($user->role_id == 3 && $request->f == 'message') {
+                $userId = $user->id;
+                $students->whereHas('schoolYearStudents', function ($q) use ($userId) {
+                    $q->whereColumn('school_year_students.school_year_id', 'students.school_year_id')
+                        ->where(function ($sub) use ($userId) {
+                            $sub->where('teacher_id', $userId)
+                                ->orWhere('co_teacher_id', $userId);
+                        });
+                });
             }
         }
 
-        if($request->has('schoolYear') && !empty($request->schoolYear)){
+        if ($request->has('schoolYear') && !empty($request->schoolYear)) {
             $schoolYear = $request->schoolYear;
             $students->where('school_year_id', $schoolYear);
         }
@@ -139,13 +154,12 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-            
+
         $request->validate([
             'search_student_id' => 'nullable|integer|exists:students,id'
         ]);
 
-        if($request->search_student_id){
-                
+        if ($request->search_student_id) {
             $studentInfo = $this->updateStudent($request, $request->search_student_id, 'store');
 
             return $studentInfo;
@@ -170,17 +184,16 @@ class StudentController extends Controller
 
         DB::beginTransaction();
 
-        try {           
-
+        try {
             $student_id = $this->getStudentId();
 
             $validated['student_id'] = $student_id;
-            $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
-            $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
-            $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
-            $validated['extname'] = $request->extname=='null' ? null : $request->extname;
-            $validated['email'] = $request->email=='null' ? null : $request->email;
-            $validated['address'] = $request->address=='null' ? null : $request->address;
+            $validated['rfid_tag'] = $request->rfid_tag == 'null' ? null : $request->rfid_tag;
+            $validated['qr_code'] = $request->qr_code == 'null' ? null : $request->qr_code;
+            $validated['middlename'] = $request->middlename == 'null' ? null : $request->middlename;
+            $validated['extname'] = $request->extname == 'null' ? null : $request->extname;
+            $validated['email'] = $request->email == 'null' ? null : $request->email;
+            $validated['address'] = $request->address == 'null' ? null : $request->address;
 
             if ($request->hasFile('newPhoto')) {
                 $request->validate([
@@ -189,28 +202,30 @@ class StudentController extends Controller
                 $validated['photo'] = $request->file('newPhoto')->store('students', 'public');
             }
 
-            if($user->role_id<3){
+            if ($user->role_id < 3) {
                 $request->validate([
                     'teachers_id' => 'required|integer|exists:users,id',
                 ]);
                 $teachers_id = $request->teachers_id;
-                $validated['teachers_id'] = $teachers_id;
-            }else{            
+            } else {
                 $teachers_id = $user->id;
             }
-            
-            $teacher = Teacher::where('user_id',$teachers_id)->first();
-            if($teacher){
+
+            $resolved = $this->resolveAdviser((int) $teachers_id);
+            $teacher = $resolved['teacher'];
+            $teachers_id = $resolved['main_teacher_id'];
+
+            if ($teacher) {
                 $level = $teacher->level;
                 $grade = $teacher->grade;
                 $section = $teacher->section;
                 $school_year_id = $teacher->school_year_id;
                 $sy_from = $teacher->sy_from;
                 $sy_to = $teacher->sy_to;
-            }else{
+            } else {
                 $level = 'Elementary';
-                $grade = NULL;
-                $section = NULL;
+                $grade = null;
+                $section = null;
 
                 $getSchoolYear = $this->schoolYearServices->getSchoolYear();
                 $school_year_id = $getSchoolYear['school_year_id'];
@@ -218,7 +233,6 @@ class StudentController extends Controller
                 $sy_to = $getSchoolYear['sy_to'];
             }
 
-            
             $validated['school_year_id'] = $school_year_id;
             $validated['sy_from'] = $sy_from;
             $validated['sy_to'] = $sy_to;
@@ -234,35 +248,32 @@ class StudentController extends Controller
             $this->updateSchoolYearStudent($student, 'store');
 
             $lastname = mb_strtoupper($student->lastname);
-            $firstname = mb_strtoupper($student->firstname);        
+            $firstname = mb_strtoupper($student->firstname);
 
             if (!empty($student->middlename)) {
                 $middleInitial = mb_strtoupper(mb_substr($student->middlename, 0, 1)) . ".";
-            }else{
+            } else {
                 $middleInitial = '';
             }
             if (!empty($student->extname)) {
                 $extname = mb_strtoupper($student->extname);
-            }else{
+            } else {
                 $extname = '';
             }
 
-            $name = "$lastname, $firstname $extname $middleInitial";
+            $name = "$lastname,$firstname $extname$middleInitial";
 
-            $shoolInfo = SchoolInfo::first();
-            $schoolName = $shoolInfo ? $shoolInfo->name : 'CDEVITSolutions';
+            $shoolInfo = SchoolInfo::first();$schoolName = $shoolInfo ? $shoolInfo->name : 'CDEVITSolutions';
 
-            $message = $name." is currently enrolled in " . $schoolName . ". Thank you.";
-            
-            $message = str_replace(" ","_",$message);
+            $message =$name . " is currently enrolled in " . $schoolName . ". Thank you.";
 
-            dispatch(new SendSmsNewStudentJob($student->contact_no, $message))->onQueue('gsmNewStudent');
+            $message = str_replace(" ", "_", $message);
+
+            dispatch(new SendSmsNewStudentJob($student->contact_no,$message))->onQueue('gsmNewStudent');
 
             DB::commit();
             return $student;
-
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -272,11 +283,11 @@ class StudentController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request,$id)
     {
         DB::beginTransaction();
-        try{            
-            $student = $this->updateStudent($request, $id, 'update');
+        try {
+            $student =$this->updateStudent($request,$id, 'update');
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -292,13 +303,13 @@ class StudentController extends Controller
         }
     }
 
-    private function updateStudent($request, $id, $option)
+    private function updateStudent($request, $id,$option)
     {
         $user = Auth::user();
 
         $student = Student::findOrFail($id);
 
-        $validated = $request->validate([
+        $validated =$request->validate([
             'rfid_tag' => 'nullable|string',
             'qr_code' => 'nullable|string',
             'student_id' => 'required|unique:students,student_id,' . $id,
@@ -311,53 +322,53 @@ class StudentController extends Controller
             'birthdate' => 'nullable',
             'email' => 'nullable|string',
             'address' => 'nullable|string',
-            'lrn_no' => 'required|string|unique:students,student_id,' . $id,
+            'lrn_no' => 'required|string|unique:students,lrn_no,' . $id,
             'status' => 'required|in:Active,Inactive'
         ]);
-        
-        $validated['birthdate'] = $request->birthdate=='null' ? null : date('Y-m-d', strtotime($request->birthdate));
-        $validated['rfid_tag'] = $request->rfid_tag=='null' ? null : $request->rfid_tag;
-        $validated['qr_code'] = $request->qr_code=='null' ? null : $request->qr_code;        
-        $validated['middlename'] = $request->middlename=='null' ? null : $request->middlename;
-        $validated['extname'] = $request->extname=='null' ? null : $request->extname;
-        $validated['email'] = $request->email=='null' ? null : $request->email;
-        $validated['address'] = $request->address=='null' ? null : $request->address;
 
-        if ($request->hasFile('newPhoto')) {
-            $request->validate([
+        $validated['birthdate'] = (empty($request->birthdate) ||$request->birthdate == 'null')
+            ? null
+            : date('Y-m-d', strtotime($request->birthdate));$validated['rfid_tag'] = $request->rfid_tag == 'null' ? null : $request->rfid_tag;
+        $validated['qr_code'] = $request->qr_code == 'null' ? null : $request->qr_code;
+        $validated['middlename'] = $request->middlename == 'null' ? null : $request->middlename;
+        $validated['extname'] = $request->extname == 'null' ? null : $request->extname;
+        $validated['email'] = $request->email == 'null' ? null : $request->email;
+        $validated['address'] = $request->address == 'null' ? null : $request->address;
+
+        if ($request->hasFile('newPhoto')) {$request->validate([
                 'newPhoto' => 'required|image',
             ]);
             if ($student->photo && Storage::disk('public')->exists($student->photo)) {
                 Storage::disk('public')->delete($student->photo);
             }
-            $validated['photo'] = $request->file('newPhoto')->store('students', 'public');
+            $validated['photo'] =$request->file('newPhoto')->store('students', 'public');
         }
 
-        if($user->role_id<3){      
-            $request->validate([
+        if ($user->role_id < 3) {$request->validate([
                 'teachers_id' => 'required|integer|exists:users,id',
             ]);
-            
-            $teacher = Teacher::where('user_id',$request->teachers_id)->first();
-            
-            if($teacher){
-                $validated['teachers_id'] = $request->teachers_id;
-                if($validated['status']=='Active'){
-                    $validated['school_year_id'] = $teacher->school_year_id;
-                    $validated['sy_from'] = $teacher->sy_from;
-                    $validated['sy_to'] = $teacher->sy_to;
-                    $validated['level'] = $teacher->level;
-                    $validated['grade'] = $teacher->grade;
-                    $validated['section'] = $teacher->section;
+
+            $resolved = $this->resolveAdviser((int)$request->teachers_id);
+            $teacher =$resolved['teacher'];
+
+            if ($teacher) {
+                $validated['teachers_id'] =$resolved['main_teacher_id'];
+                if ($validated['status'] == 'Active') {
+                    $validated['school_year_id'] =$teacher->school_year_id;
+                    $validated['sy_from'] =$teacher->sy_from;
+                    $validated['sy_to'] =$teacher->sy_to;
+                    $validated['level'] =$teacher->level;
+                    $validated['grade'] =$teacher->grade;
+                    $validated['section'] =$teacher->section;
                 }
             }
         }
 
-        if($option=='store' && $user->role_id==3){
-            $validated['teacher_id_pending'] = $student->teachers_id;
-            $validated['teacher_id_requested'] = $user->id;
+        if ($option == 'store' && $user->role_id == 3) {$resolvedRequester = $this->resolveAdviser((int)$user->id);
+            $validated['teacher_id_pending'] =$student->teachers_id;
+            $validated['teacher_id_requested'] =$resolvedRequester['main_teacher_id'];
         }
-        
+
         $student->update($validated);
 
         $this->updateSchoolYearStudent($student, 'update');
@@ -368,45 +379,37 @@ class StudentController extends Controller
     public function statusTotal(Request $request)
     {
         $user = Auth::user();
-        $schoolYear = $request->schoolYear;
-        $role_id = $user->role_id;
-        $user_id = $user->id;
+        $schoolYear =$request->schoolYear;
+        $role_id =$user->role_id;
+        $user_id =$user->id;
+
+        $adviserIds = [$user_id];
+        if ($role_id == 3) {
+            $resolved =$this->resolveAdviser((int) $user_id);$adviserIds = array_values(array_unique([$user_id,$resolved['main_teacher_id']]));
+        }
 
         $totals = Student::select('status', DB::raw('count(*) as total'))
-            ->whereHas('schoolYearStudents', function ($q) use ($schoolYear, $role_id, $user_id) {
-                if(!empty($schoolYear)){
-                    $q->where('school_year_id', $schoolYear);                    
+            ->whereHas('schoolYearStudents', function ($q) use ($schoolYear, $role_id,$user_id) {
+                if (!empty($schoolYear)) {
+                    $q->where('school_year_id',$schoolYear);
                 }
 
-                if($role_id==3){
-                    $q->where(function ($q) use ($user_id) {
-                        $q->where('teacher_id', $user_id);
-                        $q->orWhere('co_teacher_id', $user_id);
+                if ($role_id == 3) {$q->where(function ($sub) use ($user_id) {
+                        $sub->where('teacher_id',$user_id)
+                            ->orWhere('co_teacher_id', $user_id);
                     });
                 }
             });
-        
-        // if ($request->has('search') && !empty($request->search)) {
-        //     $search = $request->search;
-        //     $totals->where(function ($q) use ($search) {
-        //         $q->where('firstname', 'like', "%$search%")
-        //         ->orWhere('lastname', 'like', "%$search%")
-        //         ->orWhere('student_id', 'like', "%$search%")
-        //         ->orWhere('lrn_no', 'like', "%$search%")
-        //         ->orWhere('grade', 'like', "%$search%")
-        //         ->orWhere('section', 'like', "%$search%");
-        //     });
-        // }
 
-        $totals = $totals->groupBy('status')
-                ->get();
+        $totals =$totals->groupBy('status')
+            ->get();
 
-        $totalActive = $totals->firstWhere('status', 'Active')->total ?? 0;
-        $totalInActive = $totals->firstWhere('status', 'Inactive')->total ?? 0;
-        
-        $totalApproved = Student::where('teacher_id_approved',$user->id)->count();
-        $totalRequested = Student::where('teacher_id_requested',$user->id)->count();
-        $totalPending = Student::where('teacher_id_pending',$user->id)->count();
+        $totalActive =$totals->firstWhere('status', 'Active')->total ?? 0;
+        $totalInActive =$totals->firstWhere('status', 'Inactive')->total ?? 0;
+
+        $totalApproved = Student::whereIn('teacher_id_approved',$adviserIds)->count();
+        $totalRequested = Student::whereIn('teacher_id_requested',$adviserIds)->count();
+        $totalPending = Student::whereIn('teacher_id_pending',$adviserIds)->count();
 
         return response()->json([
             'totalActiveResponse' => $totalActive,
@@ -419,33 +422,36 @@ class StudentController extends Controller
 
     public function approved(Request $request)
     {
-        $validated = $request->validate([
-            'id' => 'required|integer|exists:students,id', 
+        $validated =$request->validate([
+            'id' => 'required|integer|exists:students,id',
         ]);
 
         $user = Auth::user();
+        $id =$validated['id'];
 
-        $id = $validated['id'];
+        $student = Student::findOrFail($id);$resolved = $this->resolveAdviser((int)$student->teacher_id_requested);
+        $teacher =$resolved['teacher'];
 
-        $student = Student::findOrFail($id);
-        $teacher_id_requested = $student->teacher_id_requested;
+        if (!$teacher) {
+            return response()->json(['message' => 'Requested adviser record not found.'], 422);
+        }
 
-        $teacher = Teacher::where('user_id',$teacher_id_requested)->first();
+        DB::transaction(function () use ($student,$teacher, $resolved,$user) {
+            $student->school_year_id =$teacher->school_year_id;
+            $student->sy_from =$teacher->sy_from;
+            $student->sy_to =$teacher->sy_to;
+            $student->level =$teacher->level;
+            $student->grade =$teacher->grade;
+            $student->section =$teacher->section;
+            $student->teacher_id_approved =$user->id;
+            $student->teachers_id = $resolved['main_teacher_id'];$student->teacher_id_requested = 0;
+            $student->teacher_id_pending = 0;
+            $student->status = 'Active';$student->save();
 
-        $student->school_year_id = $teacher->school_year_id;
-        $student->sy_from = $teacher->sy_from;
-        $student->sy_to = $teacher->sy_to;
-        $student->level = $teacher->level;
-        $student->grade = $teacher->grade;
-        $student->section = $teacher->section;
-        $student->teacher_id_approved = $user->id;
-        $student->teachers_id = $teacher_id_requested;
-        $student->teacher_id_requested = 0;
-        $student->teacher_id_pending = 0;
-        $student->status = 'Active';
-        $student->save();
+            $this->updateSchoolYearStudent($student, 'update');
+        });
 
-        return response()->json(['message' => 'Success', 200]);
+        return response()->json(['message' => 'Success'], 200);
     }
 
     public function destroy($id)
@@ -454,11 +460,11 @@ class StudentController extends Controller
 
         $check = Attendance::where('student_id',$id)->first();
 
-        if($check){
+        if ($check) {
             return response()->json(['message' => 'Error! Student already have attendace.']);
         }
 
-        SchoolYearStudent::where('student_id',$id)->delete();
+        SchoolYearStudent::where('student_id', $id)->delete();
 
         $student->delete();
         return response()->json(['message' => 'Deleted']);
@@ -478,43 +484,70 @@ class StudentController extends Controller
         return $year . str_pad($number, 5, '0', STR_PAD_LEFT);
     }
 
-    private function updateSchoolYearStudent($student, $from)
+    private function updateSchoolYearStudent($student,$from)
     {
-        $fetchTeacher = Teacher::where('school_year_id', $student->school_year_id)
+        $fetchTeacher = Teacher::where('school_year_id',$student->school_year_id)
             ->where('level', $student->level)
             ->where('grade', $student->grade)
             ->where('section', $student->section)
             ->where('co_adviser', 1)
+            ->where('status', 'Active')
             ->first();
-        
-        $check = SchoolYearStudent::where('student_id',$student->id)
-            ->where('school_year_id',$student->school_year_id)
-            ->where('sy_from',$student->sy_from)
-            ->where('sy_to',$student->sy_to)
-            ->first();
-        if($check){
-            $update = SchoolYearStudent::find($check->id);
-        }else{
-            $update = new SchoolYearStudent();
-            $update->student_id = $student->id;
-            $update->school_year_id = $student->school_year_id;
-            $update->sy_from = $student->sy_from;
-            $update->sy_to = $student->sy_to;
-            $update->level = $student->level;
-            $update->date_enrolled = date('Y-m-d');
-            $update->is_transferred = 0;
-        }
-        $update->grade = $student->grade;
-        $update->section = $student->section;
-        $update->teacher_id = $student->teachers_id;
-        $update->co_teacher_id = $fetchTeacher ? $fetchTeacher->user_id : null;
-        $update->status = $student->status;
 
-        if($from!='update' && $from!='store'){
-            $update->date_enrolled = $student->date_enrolled;
-            $update->is_transferred = $student->is_transferred;
+        $check = SchoolYearStudent::where('student_id',$student->id)
+            ->where('school_year_id', $student->school_year_id)
+            ->where('sy_from', $student->sy_from)
+            ->where('sy_to', $student->sy_to)
+            ->first();
+
+        if ($check) {
+            $update = SchoolYearStudent::find($check->id);
+        } else {
+            $update = new SchoolYearStudent();
+            $update->student_id =$student->id;
+            $update->school_year_id =$student->school_year_id;
+            $update->sy_from =$student->sy_from;
+            $update->sy_to =$student->sy_to;
+            $update->date_enrolled = date('Y-m-d');$update->is_transferred = 0;
         }
-        
+
+        $update->level =$student->level;
+        $update->grade =$student->grade;
+        $update->section =$student->section;
+        $update->teacher_id =$student->teachers_id;
+        $update->co_teacher_id = $fetchTeacher ? $fetchTeacher->user_id : null;
+        $update->status =$student->status;
+
+        if ($from != 'update' &&$from != 'store') {
+            $update->date_enrolled =$student->date_enrolled;
+            $update->is_transferred =$student->is_transferred;
+        }
+
         $update->save();
+    }
+
+    private function resolveAdviser(int $teacherUserId): array
+    {
+        $teacher = Teacher::where('user_id',$teacherUserId)->first();
+
+        if (!$teacher) {
+            return ['teacher' => null, 'main_teacher_id' => $teacherUserId];
+        }
+
+        if ((int) $teacher->co_adviser === 1) {
+            $mainTeacher = Teacher::where('school_year_id',$teacher->school_year_id)
+                ->where('level', $teacher->level)
+                ->where('grade', $teacher->grade)
+                ->where('section', $teacher->section)
+                ->where(function ($q) {$q->whereNull('co_adviser')->orWhere('co_adviser', 0);
+                })
+                ->first();
+
+            if ($mainTeacher) {
+                return ['teacher' => $mainTeacher, 'main_teacher_id' =>$mainTeacher->user_id];
+            }
+        }
+
+        return ['teacher' => $teacher, 'main_teacher_id' =>$teacher->user_id];
     }
 }

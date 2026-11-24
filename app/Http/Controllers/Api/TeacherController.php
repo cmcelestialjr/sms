@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -23,34 +24,33 @@ class TeacherController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_no' => 'required|string|max:255|unique:users,id_no',
+            'id_no' => 'required|string|max:255|unique:teachers,id_no',
             'lastname' => 'required|string|max:255',
             'firstname' => 'required|string|max:255',
             'middlename' => 'nullable|string|max:255',
             'extname' => 'nullable|string|max:255',
-            'contact_no' => 'nullable|string|max:20',
+            'contact_no' => 'required|regex:/^09\d{9}$/',
             'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string',
             'sy_from' => 'nullable|integer',
             'sy_to' => 'nullable|integer',
             'level' => 'nullable|string|max:255',
             'grade' => 'nullable|string|max:255',
             'section' => 'nullable|string|max:255',
-            'teachers_id' => 'nullable|integer|exists:users,id', 
+            'co_adviser' => 'nullable|boolean',
+            'teachers_id' => 'nullable|integer|exists:users,id',
             'user_id' => 'nullable|integer|exists:users,id',
             'status' => 'required|in:Active,Inactive',
-            'contact_no' => 'required|regex:/^09\d{9}$/',
-            'email' => 'nullable|email',
-            'address' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
-        
-        try{ 
-            
+
+        try {
             $getSchoolYear = $this->schoolYearServices->getSchoolYear();
             $validated['school_year_id'] = $getSchoolYear['school_year_id'];
             $validated['sy_from'] = $getSchoolYear['sy_from'];
             $validated['sy_to'] = $getSchoolYear['sy_to'];
+            $validated['co_adviser'] = $request->boolean('co_adviser') ? 1 : null;
 
             if ($request->hasFile('newPhoto')) {
                 $request->validate([
@@ -64,7 +64,6 @@ class TeacherController extends Controller
             DB::commit();
 
             return response()->json($teacher, 201);
-        
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -91,6 +90,7 @@ class TeacherController extends Controller
             'level' => 'nullable|string|max:255',
             'grade' => 'nullable|string|max:255',
             'section' => 'nullable|string|max:255',
+            'co_adviser' => 'nullable|boolean',
             'teachers_id' => 'nullable|integer|exists:users,id',
             'user_id' => 'nullable|integer|exists:users,id',
             'status' => 'required|in:Active,Inactive'
@@ -98,13 +98,16 @@ class TeacherController extends Controller
 
         DB::beginTransaction();
 
-        try{    
-
-            if($validated['status']=='Active'){
+        try {
+            if ($validated['status'] == 'Active') {
                 $getSchoolYear = $this->schoolYearServices->getSchoolYear();
                 $validated['school_year_id'] = $getSchoolYear['school_year_id'];
                 $validated['sy_from'] = $getSchoolYear['sy_from'];
                 $validated['sy_to'] = $getSchoolYear['sy_to'];
+            }
+
+            if ($request->has('co_adviser')) {
+                $validated['co_adviser'] = $request->boolean('co_adviser') ? 1 : null;
             }
 
             $teacher->update($validated);
@@ -112,12 +115,11 @@ class TeacherController extends Controller
             DB::commit();
 
             return response()->json($teacher);
-        
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Error creating teacher.',
+                'message' => 'Error updating teacher.',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -126,24 +128,24 @@ class TeacherController extends Controller
     public function statusTotal(Request $request)
     {
         $totals = DB::table('teachers')
-                ->select('status', DB::raw('count(*) as total'));
+            ->select('status', DB::raw('count(*) as total'));
 
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $totals->where(function ($q) use ($search) {
                 $q->where('firstname', 'like', "%$search%")
-                ->orWhere('lastname', 'like', "%$search%")
-                ->orWhere('middlename', 'like', "%$search%");
+                    ->orWhere('lastname', 'like', "%$search%")
+                    ->orWhere('middlename', 'like', "%$search%");
             });
         }
 
-        if($request->has('schoolYear') && !empty($request->schoolYear)) {
+        if ($request->has('schoolYear') && !empty($request->schoolYear)) {
             $schoolYear = $request->schoolYear;
             $totals->where('school_year_id', $schoolYear);
         }
 
         $totals = $totals->groupBy('status')
-                ->get();
+            ->get();
 
         $totalActive = $totals->firstWhere('status', 'Active')->total ?? 0;
         $totalInActive = $totals->firstWhere('status', 'Inactive')->total ?? 0;
@@ -155,17 +157,17 @@ class TeacherController extends Controller
     }
 
     public function transfer(Request $request)
-    {   
+    {
         $validated = $request->validate([
             'id' => 'required|integer|exists:users,id',
-            'students' => 'required|string', 
+            'students' => 'required|string',
             'fromTeacherId' => 'required|integer|exists:users,id'
         ]);
 
         $fromTeacherId = $validated['fromTeacherId'];
 
-        $studentsArray = explode(',', $request->students);
-        
+        $studentsArray = array_filter(explode(',', $request->students), fn($val) => trim($val) !== '');
+
         if (count($studentsArray) < 1) {
             return response()->json([
                 'success' => false,
@@ -175,20 +177,51 @@ class TeacherController extends Controller
 
         $validatedStudents = array_map('intval', $studentsArray);
 
-        $teacher = Teacher::where('user_id',$validated['id'])->first();
+        $teacher = Teacher::where('user_id', $validated['id'])->first();
 
-        Student::whereIn('id', $validatedStudents)
-            ->update(['teachers_id' => $validated['id'],
-                'school_year_id' => $teacher->school_year_id,
-                'sy_from' => $teacher->sy_from,
-                'sy_to' => $teacher->sy_to,
-                'level' => $teacher->level,
-                'grade' => $teacher->grade,
-                'section' => $teacher->section,
-                'status' => 'Active'
-            ]);
+        if (!$teacher) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Target teacher record not found.',
+            ], 404);
+        }
 
-        $this->updateSchoolYearStudent($teacher, $validatedStudents, $fromTeacherId);
+        // If target teacher is a co-adviser, resolve to the section's main adviser
+        if ((int) $teacher->co_adviser === 1) {
+            $mainTarget = Teacher::where('school_year_id', $teacher->school_year_id)
+                ->where('level', $teacher->level)
+                ->where('grade', $teacher->grade)
+                ->where('section', $teacher->section)
+                ->where(function ($q) {
+                    $q->whereNull('co_adviser')->orWhere('co_adviser', 0);
+                })
+                ->first();
+
+            if (!$mainTarget) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Add an adviser first before transferring students to this co-adviser section.',
+                ], 422);
+            }
+
+            $teacher = $mainTarget;
+        }
+
+        DB::transaction(function () use ($teacher, $validatedStudents, $fromTeacherId) {
+            Student::whereIn('id', $validatedStudents)
+                ->update([
+                    'teachers_id' => $teacher->user_id,
+                    'school_year_id' => $teacher->school_year_id,
+                    'sy_from' => $teacher->sy_from,
+                    'sy_to' => $teacher->sy_to,
+                    'level' => $teacher->level,
+                    'grade' => $teacher->grade,
+                    'section' => $teacher->section,
+                    'status' => 'Active'
+                ]);
+
+            $this->updateSchoolYearStudent($teacher, $validatedStudents, $fromTeacherId);
+        });
 
         return response()->json([
             'success' => true,
@@ -205,21 +238,29 @@ class TeacherController extends Controller
             ->where('grade', $teacher->grade)
             ->where('section', $teacher->section)
             ->where('co_adviser', 1)
+            ->where('status', 'Active')
             ->first();
 
-        SchoolYearStudent::whereIn('student_id', $validatedStudents)
-            ->where('school_year_id', $fromTeacher->school_year_id)
-            ->where('teacher_id', $fromTeacherId)
-            ->update(['teacher_id' => $teacher->user_id,
-                'school_year_id' => $teacher->school_year_id,
-                'sy_from' => $teacher->sy_from,
-                'sy_to' => $teacher->sy_to,
-                'level' => $teacher->level,
-                'grade' => $teacher->grade,
-                'section' => $teacher->section,
-                'co_teacher_id' => $fetchTeacher ? $fetchTeacher->user_id : null,
-                'status' => 'Active'
-            ]);
-    }
+        $query = SchoolYearStudent::whereIn('student_id', $validatedStudents)
+            ->where(function ($q) use ($fromTeacherId) {
+                $q->where('teacher_id', $fromTeacherId)
+                    ->orWhere('co_teacher_id', $fromTeacherId);
+            });
 
+        if ($fromTeacher) {
+            $query->where('school_year_id', $fromTeacher->school_year_id);
+        }
+
+        $query->update([
+            'teacher_id' => $teacher->user_id,
+            'school_year_id' => $teacher->school_year_id,
+            'sy_from' => $teacher->sy_from,
+            'sy_to' => $teacher->sy_to,
+            'level' => $teacher->level,
+            'grade' => $teacher->grade,
+            'section' => $teacher->section,
+            'co_teacher_id' => $fetchTeacher ? $fetchTeacher->user_id : null,
+            'status' => 'Active'
+        ]);
+    }
 }

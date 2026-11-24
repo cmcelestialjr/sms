@@ -14,7 +14,7 @@ class Absence extends Model
         'student_id',
         'date',
         'updated_at',
-        'created_at,'
+        'created_at',
     ];
 
     public function student(): BelongsTo

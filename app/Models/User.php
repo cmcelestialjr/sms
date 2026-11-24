@@ -63,6 +63,7 @@ class User extends Authenticatable
     {
         return $this->belongsTo(UsersRole::class, 'role_id', 'id');
     }
+
     public function teacher(): HasOne
     {
         return $this->hasOne(Teacher::class, 'user_id', 'id');
@@ -73,8 +74,14 @@ class User extends Authenticatable
         return $this->hasMany(Student::class, 'teachers_id', 'id');
     }
 
-    public function getStudentsCountAttribute(): int 
+    public function getStudentsCountAttribute(): int
     {
+        if ($this->teacher && (int) $this->teacher->co_adviser === 1) {
+            return SchoolYearStudent::where('co_teacher_id', $this->id)
+                ->where('school_year_id', $this->teacher->school_year_id)
+                ->count();
+        }
+
         return $this->students()->count();
     }
 }

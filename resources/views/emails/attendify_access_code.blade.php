@@ -34,11 +34,11 @@
 
                             @if($role === 'teacher')
                                 <p style="margin: 0 0 22px; font-size: 15px; line-height: 1.6; color: #334155;">
-                                    Welcome to the <strong>LNU-ILS Attendify App</strong>. Below is your official <strong>Teacher ID Number</strong>, your <strong>6-Digit Security Code</strong>, and an easy step-by-step guide to download and open the app on your Android phone.
+                                    Welcome to the <strong>LNU-ILS Attendify App</strong>. Below is your official <strong>Teacher ID Number</strong>, your <strong>6-Digit Security Code</strong>, and an easy step-by-step guide to download and open the app on your <strong>Android phone</strong> <em>(currently available for Android phones only in the meantime)</em>.
                                 </p>
                             @else
                                 <p style="margin: 0 0 22px; font-size: 15px; line-height: 1.6; color: #334155;">
-                                    Welcome to the <strong>LNU-ILS Attendify App</strong>! Below are the login details for <strong>{{ $fullName }}</strong> so you can easily check daily school arrival (Morning IN) and dismissal (Afternoon OUT) on your phone.
+                                    Welcome to the <strong>LNU-ILS Attendify App</strong>! Below are the login details for <strong>{{ $fullName }}</strong> so you can easily check daily school arrival (Morning IN) and dismissal (Afternoon OUT) on your <strong>Android phone</strong> <em>(currently available for Android phones only in the meantime)</em>.
                                 </p>
                             @endif
 
@@ -89,30 +89,35 @@
                             <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #050D2E; border-radius: 16px; padding: 24px 20px; margin-bottom: 26px; text-align: center; border: 2px solid #F5B400;">
                                 <tr>
                                     <td>
-                                        <div style="font-size: 12px; font-weight: bold; color: #F5B400; letter-spacing: 1px; text-transform: uppercase;">
-                                            Start Here • Official Android App
+                                        <div style="display: inline-block; background-color: rgba(245, 180, 0, 0.18); border: 1px solid #F5B400; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: bold; color: #F5B400; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px;">
+                                            📱 Android Phones Only (In the Meantime)
                                         </div>
                                         <h2 style="margin: 6px 0 10px; color: #ffffff; font-size: 20px;">
                                             How to Download the Attendify App
                                         </h2>
                                         <p style="margin: 0 0 18px; color: #e2e8f0; font-size: 14.5px; line-height: 1.5;">
-                                            Using your Android phone, simply tap the gold button below to open the official LNU-ILS App Folder:
+                                            Using your <strong>Android phone</strong>, simply tap the gold button below to open the official LNU-ILS App Folder:
                                         </p>
 
                                         <!-- Big Friendly Download Button (Hides Raw Link) -->
                                         <a href="{{ $apkDownloadUrl }}" target="_blank" style="display: inline-block; background-color: #F5B400; color: #050D2E; font-size: 16px; font-weight: bold; text-decoration: none; padding: 15px 28px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
                                             📥 TAP HERE TO DOWNLOAD ATTENDIFY APP
                                         </a>
+
+                                        <!-- Clear Android-Only Compatibility Note -->
+                                        <div style="margin-top: 16px; padding: 10px 14px; background-color: rgba(255, 255, 255, 0.08); border-radius: 10px; font-size: 12.5px; color: #cbd5e1; line-height: 1.45;">
+                                            <strong style="color: #F5B400;">Please Note:</strong> The Attendify app (<code style="color: #ffffff;">Attendify.apk</code>) is currently available for <strong>Android phones only</strong> in the meantime (not yet available for iPhone / iOS devices).
+                                        </div>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- Easy-to-Read 3 Steps Box for Seniors, Parents & Students -->
+                            <!-- Easy-to-Read 4 Steps Box for Seniors, Parents & Students -->
                             <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 14px; padding: 18px 20px; margin-bottom: 28px;">
                                 <tr>
                                     <td>
                                         <div style="font-size: 15px; font-weight: bold; color: #050D2E; margin-bottom: 12px;">
-                                            Easy Instructions After You Tap the Gold Button:
+                                            Easy Instructions After You Tap the Gold Button (Android Only):
                                         </div>
 
                                         <p style="margin: 0 0 12px; font-size: 14.5px; line-height: 1.55; color: #1e293b;">
@@ -125,7 +130,7 @@
                                             <strong>3. Tap "Download anyway":</strong> Google Drive may show a message saying it cannot scan large files. The LNU-ILS app is 100% safe—just tap the blue <strong>"Download anyway"</strong> button.
                                         </p>
                                         <p style="margin: 0; font-size: 14.5px; line-height: 1.55; color: #1e293b;">
-                                            <strong>4. Open & Install:</strong> Once downloaded, open <strong>Attendify.apk</strong> and tap <strong>"Install"</strong> (if your phone asks permission, turn on <em>"Allow from this source"</em> and tap <em>"Scan app"</em>).
+                                            <strong>4. Open & Install:</strong> Once downloaded, open <strong>Attendify.apk</strong> on your Android phone and tap <strong>"Install"</strong> (if your phone asks permission, turn on <em>"Allow from this source"</em> and tap <em>"Scan app"</em>).
                                         </p>
                                     </td>
                                 </tr>
@@ -141,7 +146,7 @@
                                         Follow the Pictures Below on Your Phone
                                     </h2>
                                     <p style="margin: 0 0 18px; font-size: 14px; color: #475569; line-height: 1.5;">
-                                        <em>Tip: If the pictures look small on your screen, you can also open the full-size pictures attached at the very bottom of this email to zoom in clearly.</em>
+                                        <em>Tip: Tap any picture to zoom in clearly on your phone screen.</em>
                                     </p>
 
                                     @foreach($guidePubmats as $guide)
@@ -170,7 +175,7 @@
 
                             <!-- Need Help Box -->
                             <div style="background-color: #f1f5f9; border-radius: 12px; padding: 14px 16px; margin-top: 12px; font-size: 13.5px; color: #334155; line-height: 1.5;">
-                                <strong>Need Help Installing?</strong> Feel free to ask your child's Homeroom Adviser or visit the <strong>LNU-ILS Office</strong> (Email: <strong>attendify@lnu.edu.ph</strong>) and we will gladly assist you!
+                                <strong>Need Help Installing?</strong> Feel free to ask your child's Homeroom Adviser or visit the <strong>LNU-ILS Office</strong> (Email: <strong>lnuilsedu@gmail.com</strong> • Trunkline loc. 350) and we will gladly assist you!
                             </div>
                         </td>
                     </tr>

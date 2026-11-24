@@ -19,15 +19,25 @@ class SchoolYearStudent extends Model
         'grade',
         'section',
         'teacher_id',
-        'co_teacher_id', //null, 1
+        'co_teacher_id', // nullable, co-adviser's user_id
         'status',
     ];
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class, 'student_id', 'id');
+    }
 
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class, 'teacher_id', 'user_id');
     }
-    
+
+    public function coTeacher(): BelongsTo
+    {
+        return $this->belongsTo(Teacher::class, 'co_teacher_id', 'user_id');
+    }
+
     public function schoolYear(): BelongsTo
     {
         return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');

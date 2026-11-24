@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Models;
 
@@ -24,7 +24,7 @@ class Teacher extends Model
         'address',
         'sex',
         'position',
-        'school_year_id',        
+        'school_year_id',
         'sy_from',
         'sy_to',
         'level',
@@ -32,7 +32,7 @@ class Teacher extends Model
         'section',
         'status',
         'photo',
-        'co_adviser', //null, 1
+        'co_adviser', // null, 1
         'user_id'
     ];
 
@@ -59,12 +59,17 @@ class Teacher extends Model
         });
     }
 
+    public function isCoAdviser(): bool
+    {
+        return (int) $this->co_adviser === 1;
+    }
+
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
     }
 
-    public function students(): HasMany 
+    public function students(): HasMany
     {
         return $this->hasMany(Student::class, 'teachers_id', 'user_id');
     }
@@ -75,13 +80,32 @@ class Teacher extends Model
             ->where('status', 'Active');
     }
 
-    public function getStudentsCountAttribute(): int 
+    public function getStudentsCountAttribute(): int
     {
+        if ($this->isCoAdviser()) {
+            return SchoolYearStudent::where('co_teacher_id', $this->user_id)
+                ->where('school_year_id', $this->school_year_id)
+                ->count();
+        }
+
         return $this->students()->count();
     }
 
     public function getActiveStudentsListAttribute()
     {
+        if ($this->isCoAdviser()) {
+            return Student::where('status', 'Active')
+                ->whereHas('schoolYearStudents', function ($q) {
+                    $q->where('co_teacher_id', $this->user_id)
+                        ->where('school_year_id', $this->school_year_id)
+                        ->where('level', $this->level)
+                        ->where('grade', $this->grade)
+                        ->where('section', $this->section);
+                })
+                ->get()
+                ->values();
+        }
+
         return $this->activestudents->filter(function ($student) {
             return $student->school_year_id == $this->school_year_id
                 && $student->level == $this->level
@@ -90,8 +114,17 @@ class Teacher extends Model
         })->values();
     }
 
-    public function getActiveStudentsCountAttribute(): int 
+    public function getActiveStudentsCountAttribute(): int
     {
+        if ($this->isCoAdviser()) {
+            return Student::where('status', 'Active')
+                ->whereHas('schoolYearStudents', function ($q) {
+                    $q->where('co_teacher_id', $this->user_id)
+                        ->where('school_year_id', $this->school_year_id);
+                })
+                ->count();
+        }
+
         return $this->activestudents()->count();
     }
 
@@ -99,7 +132,7 @@ class Teacher extends Model
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
-    
+
     public function schoolYear(): BelongsTo
     {
         return $this->belongsTo(SchoolYear::class, 'school_year_id', 'id');
@@ -109,5 +142,9 @@ class Teacher extends Model
     {
         return $this->hasMany(SchoolYearStudent::class, 'teacher_id', 'user_id');
     }
-}
 
+    public function coSchoolYearStudents(): HasMany
+    {
+        return $this->hasMany(SchoolYearStudent::class, 'co_teacher_id', 'user_id');
+    }
+}

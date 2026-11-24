@@ -7,9 +7,9 @@ Attendify Mobile App - Official Login Credentials & Quick Guide
 Good day, {{ $recipientName }}!
 
 @if($role === 'teacher')
-Welcome to the LNU-ILS Attendify App. Below is your official Teacher ID Number, your 6-Digit Security Code, and an easy step-by-step guide to download and open the app on your Android phone.
+Welcome to the LNU-ILS Attendify App. Below is your official Teacher ID Number, your 6-Digit Security Code, and an easy step-by-step guide to download and open the app on your Android phone (currently available for Android phones only in the meantime).
 @else
-Welcome to the LNU-ILS Attendify App! Below are the login details for {{ $fullName }} so you can easily check daily school arrival (Morning IN) and dismissal (Afternoon OUT) on your phone.
+Welcome to the LNU-ILS Attendify App! Below are the login details for {{ $fullName }} so you can easily check daily school arrival (Morning IN) and dismissal (Afternoon OUT) on your Android phone (currently available for Android phones only in the meantime).
 @endif
 
 
@@ -33,10 +33,6 @@ Step 1 Login (Teacher ID Number): {{ $idNumber }}
 Step 1 Login (Student ID Number): {{ $idNumber }}
 @endif
 
-@if(!empty($lrnNo))
-LRN: {{ $lrnNo }}
-
-@endif
 Step 2 Login (6-Digit Access Code): {{ $accessCode }}
 
 @if($mustChangeCode)
@@ -49,16 +45,19 @@ When you log in for the very first time using the code above, the app will ask y
 
 --------------------------------------------------------------------
 
-HOW TO DOWNLOAD & INSTALL THE ATTENDIFY ANDROID APP
+HOW TO DOWNLOAD & INSTALL THE ATTENDIFY APP (ANDROID PHONES ONLY)
 
 --------------------------------------------------------------------
+
+PLEASE NOTE: The Attendify app (Attendify.apk) is currently available for ANDROID PHONES ONLY in the meantime (not yet available for iPhone / iOS devices).
+
 
 Official LNU-ILS App Folder Link:
 
 {{ $apkDownloadUrl }}
 
 
-Easy Instructions After Opening the Link Above:
+Easy Instructions After Opening the Link Above (Android Only):
 
 1. Find the App File: Inside the folder that opens, look for the file named Attendify.apk.
 
@@ -66,7 +65,7 @@ Easy Instructions After Opening the Link Above:
 
 3. Tap "Download anyway": Google Drive may show a message saying it cannot scan large files. The LNU-ILS app is 100% safe—just tap "Download anyway".
 
-4. Open & Install: Once downloaded, open Attendify.apk and tap "Install" (if your phone asks permission, turn on "Allow from this source" and tap "Scan app").
+4. Open & Install: Once downloaded, open Attendify.apk on your Android phone and tap "Install" (if your phone asks permission, turn on "Allow from this source" and tap "Scan app").
 
 (Tip: Open the HTML version of this email to view the step-by-step picture guides.)
 

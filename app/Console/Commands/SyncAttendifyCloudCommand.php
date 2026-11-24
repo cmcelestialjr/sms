@@ -75,6 +75,7 @@ class SyncAttendifyCloudCommand extends Command
                 'level'            => $r->level,
                 'grade'            => $r->grade,
                 'section'          => $r->section,
+                'co_adviser'       => $r->co_adviser,
                 'status'           => $r->status,
                 'photo'            => $r->photo,
                 'updated_at'       => optional($r->updated_at)->toIso8601String(),
