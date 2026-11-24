@@ -4,7 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -34,14 +34,17 @@ class AttendifyAccessCodeMail extends Mailable
         $this->accessCode     = $data['access_code'];
         $this->classInfo      = $data['class_info'] ?? 'LNU-ILS';
         $this->mustChangeCode = (bool) ($data['must_change_code'] ?? true);
-        $this->apkDownloadUrl = (string) env('ATTENDIFY_APK_DOWNLOAD_URL', '#');
+        $this->apkDownloadUrl = (string) env(
+            'ATTENDIFY_APK_DOWNLOAD_URL',
+            'https://drive.google.com/drive/folders/114SxbmO2O4KRMf529S7ms4FbW52AFgaa'
+        );
         $this->guidePubmats   = $this->resolveGuidePubmats();
     }
 
     /**
      * Automatically pick the 4 visual guides for Student/Parent vs Teacher
      */
-    protected function resolveGuidePubmats(): array
+    public function resolveGuidePubmats(): array
     {
         $guides = [];
 
@@ -50,15 +53,21 @@ class AttendifyAccessCodeMail extends Mailable
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 1 • HOW TO DOWNLOAD THE APP',
                 'title'    => '3 Easy Steps to Download Attendify.apk',
-                'filename' => '1-Attendify-Teacher-APK-Download-Guide.jpeg',
-                'path'     => public_path('images/pubmats/teacher-apk-download-guide.jpeg'),
+                'filename' => '1-Attendify-Teacher-APK-Download-Guide.jpg',
+                'path'     => $this->findPubmatFile([
+                    'teacher-apk-download-guide',
+                    'Gemini_Generated_Image_yh98g8yh98g8yh98',
+                ]),
             ];
         } else {
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 1 • HOW TO DOWNLOAD THE APP',
                 'title'    => '3 Easy Steps to Download Attendify.apk',
-                'filename' => '1-Attendify-Student-Parent-APK-Download-Guide.jpeg',
-                'path'     => public_path('images/pubmats/student-parent-apk-download-guide.jpeg'),
+                'filename' => '1-Attendify-Student-Parent-APK-Download-Guide.jpg',
+                'path'     => $this->findPubmatFile([
+                    'student-parent-apk-download-guide',
+                    'Gemini_Generated_Image_q9qey3q9qey3q9qe',
+                ]),
             ];
         }
 
@@ -66,8 +75,11 @@ class AttendifyAccessCodeMail extends Mailable
         $guides[] = [
             'step'     => 'PICTURE GUIDE 2 • HOW TO INSTALL ON YOUR PHONE',
             'title'    => 'Step-by-Step Android Installation Guide',
-            'filename' => '2-Attendify-APK-Installation-Guide.jpeg',
-            'path'     => public_path('images/pubmats/apk-installation-guide.jpeg'),
+            'filename' => '2-Attendify-APK-Installation-Guide.jpg',
+            'path'     => $this->findPubmatFile([
+                'apk-installation-guide',
+                'Gemini_Generated_Image_jde2mxjde2mxjde2',
+            ]),
         ];
 
         // GUIDE 3: How to Log In & Use the Portal (Role-Specific)
@@ -75,15 +87,21 @@ class AttendifyAccessCodeMail extends Mailable
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 3 • HOW TO LOG IN & USE THE APP',
                 'title'    => 'Teacher Portal Quick Guide',
-                'filename' => '3-Attendify-Teacher-Portal-Guide.jpeg',
-                'path'     => public_path('images/pubmats/teacher-portal-quick-guide.jpeg'),
+                'filename' => '3-Attendify-Teacher-Portal-Guide.jpg',
+                'path'     => $this->findPubmatFile([
+                    'teacher-portal-quick-guide',
+                    'Gemini_Generated_Image_3ve1iw3ve1iw3ve1',
+                ]),
             ];
         } else {
             $guides[] = [
                 'step'     => 'PICTURE GUIDE 3 • HOW TO LOG IN & USE THE APP',
                 'title'    => 'Student & Parent Portal Quick Guide',
-                'filename' => '3-Attendify-Student-Parent-Portal-Guide.jpeg',
-                'path'     => public_path('images/pubmats/student-parent-quick-guide.jpeg'),
+                'filename' => '3-Attendify-Student-Parent-Portal-Guide.jpg',
+                'path'     => $this->findPubmatFile([
+                    'student-parent-quick-guide',
+                    'Gemini_Generated_Image_bbm01rbbm01rbbm0',
+                ]),
             ];
         }
 
@@ -91,11 +109,55 @@ class AttendifyAccessCodeMail extends Mailable
         $guides[] = [
             'step'     => 'PICTURE GUIDE 4 • PROFILE & CHANGING YOUR PIN',
             'title'    => 'How to Change Your 6-Digit Code & View Tutorials',
-            'filename' => '4-Attendify-Profile-Tab-Guide.jpeg',
-            'path'     => public_path('images/pubmats/profile-tab-quick-guide.jpeg'),
+            'filename' => '4-Attendify-Profile-Tab-Guide.jpg',
+            'path'     => $this->findPubmatFile([
+                'profile-tab-quick-guide',
+                'Gemini_Generated_Image_o4xgo3o4xgo3o4xg',
+            ]),
         ];
 
-        return array_values(array_filter($guides, fn ($g) => is_file($g['path'])));
+        return array_values(array_filter($guides, fn ($g) => !empty($g['path']) && is_file($g['path'])));
+    }
+
+    /**
+     * Searches public/images/pubmats (and fallback folders) across .jpg, .jpeg, .png, etc.
+     */
+    protected function findPubmatFile(array $baseNames): ?string
+    {
+        $directories = [
+            public_path('images/pubmats'),
+            public_path('pubmats'),
+            public_path('images'),
+        ];
+
+        $extensions = [
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.webp',
+            '.jpg.jpeg',
+            '.jpg.jpg',
+            '.jpeg.jpg',
+            '.jpg.png',
+            '',
+        ];
+
+        foreach ($directories as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            foreach ($baseNames as $base) {
+                foreach ($extensions as $ext) {
+                    $candidate = $dir . DIRECTORY_SEPARATOR . $base . $ext;
+                    if (is_file($candidate)) {
+                        return $candidate;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     public function envelope(): Envelope
@@ -105,7 +167,10 @@ class AttendifyAccessCodeMail extends Mailable
             : 'Parent & Student Portal';
 
         return new Envelope(
-            subject: "LNU-ILS Attendify: Your 6-Digit Code & Easy App Download Guide ({$subjectRole})",
+            replyTo: [
+                new Address('lnuilsedu@gmail.com', 'LNU-ILS Office'),
+            ],
+            subject: "LNU-ILS Attendify: Access Code & App Guide ({$subjectRole})",
         );
     }
 
@@ -113,19 +178,16 @@ class AttendifyAccessCodeMail extends Mailable
     {
         return new Content(
             view: 'emails.attendify_access_code',
+            text: 'emails.attendify_access_code_plain',
         );
     }
 
+    /**
+     * Keep attachments empty since the pubmats are already embedded inline via $message->embed().
+     * Avoiding duplicate attachments cuts email MIME size in half and lowers Gmail spam risk.
+     */
     public function attachments(): array
     {
-        $attachments = [];
-
-        foreach ($this->guidePubmats as $guide) {
-            $attachments[] = Attachment::fromPath($guide['path'])
-                ->as($guide['filename'])
-                ->withMime('image/jpeg');
-        }
-
-        return $attachments;
+        return [];
     }
 }
